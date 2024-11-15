@@ -32,9 +32,8 @@ async def send_telegram_message(message: str):
     except Exception as e:
         print(f"发送Telegram消息时出错: {e}")
 
-
 def get_crypto_data() -> List[Dict]:
-    url = "https://cryptobubbles.net/backend/data/bubbles1000.btc.json"
+    url = "https://cryptobubbles.net/backend/data/bubbles1000.usd.json"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
     }
@@ -46,39 +45,97 @@ def get_crypto_data() -> List[Dict]:
     except requests.RequestException as e:
         print(f"Error fetching data: {e}")
         return []
+    
+class ExchangeHandler:
+    def __init__(self):
+        # 定义交易所显示顺序
+        self.exchange_order = {
+            'binance': 1,
+            'bybit': 2,
+            'okx': 3,
+            'coinbase': 4,
+            'kraken': 5,
+            'kucoin': 6,
+            'gateio': 7,
+            'bitget': 8,
+            'htx': 9,
+            'bingx': 10,
+            'bitmart': 11,
+            'mexc': 12
+        }
+
+    def sort_exchanges(self, exchanges: List[str]) -> List[str]:
+        """按预定义顺序排序交易所"""
+        return sorted(exchanges, key=lambda x: self.exchange_order.get(x, float('inf')))
+
+class TokenFilter:
+    def __init__(self):
+        # 定义主流交易所列表
+        self.major_exchanges = {'bybit', 'binance', 'gateio', 'bitget'}
+        # 最小价格变化阈值
+        self.change_threshold = 5
+
+    def check_exchange_requirement(self, token: Dict) -> bool:
+        """检查交易所要求"""
+        token_exchanges = set(token['symbols'].keys()) if 'symbols' in token else set()
+        return bool(token_exchanges.intersection(self.major_exchanges))
+
+    def check_price_change(self, token: Dict) -> bool:
+        """检查价格变化要求"""
+        if 'performance' in token and 'min5' in token['performance']:
+            min5_change = token['performance']['min5']
+            return abs(min5_change) > self.change_threshold
+        return False
+
+    def apply_filters(self, token: Dict) -> bool:
+        """应用所有筛选条件"""
+        # 所有筛选条件都必须满足
+        filters = [
+            self.check_exchange_requirement,
+            self.check_price_change,
+            # 在这里可以轻松添加新的筛选条件
+        ]
+
+        return all(f(token) for f in filters)
 
 
-def filter_tokens_by_5min_change(data: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+def filter_tokens_by_conditions(data: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+    """主筛选函数"""
     gainers = []
     losers = []
 
     if not data:
         return [], []
 
+    # 创建筛选器实例
+    token_filter = TokenFilter()
+
     for token in data:
-        if 'performance' in token and 'min5' in token['performance']:
+        # 应用所有筛选条件
+        if token_filter.apply_filters(token):
+            token_info = {
+                'name': token['name'],
+                'symbol': token['symbol'],
+                'rank': token['rank'],
+                'price': token['price'],
+                'marketcap': "{:,}".format(token['marketcap']),
+                'volume': "{:,}".format(token['volume']),
+                'performance': token['performance'],
+                'exchanges': list(token['symbols'].keys()) if 'symbols' in token else []
+            }
+
+            # 根据涨跌幅分类
             min5_change = token['performance']['min5']
+            if min5_change > 0:
+                gainers.append(token_info)
+            else:
+                losers.append(token_info)
 
-            if abs(min5_change) > 3:
-                token_info = {
-                    'name': token['name'],
-                    'symbol': token['symbol'],
-                    'rank': token['rank'],
-                    'price': token['price'],
-                    'performance': token['performance'],
-                    'exchanges': list(token['symbols'].keys()) if 'symbols' in token else []
-                }
-
-                if min5_change > 0:
-                    gainers.append(token_info)
-                else:
-                    losers.append(token_info)
-
+    # 排序
     gainers.sort(key=lambda x: x['performance']['min5'], reverse=True)
     losers.sort(key=lambda x: x['performance']['min5'])
 
     return gainers, losers
-
 
 def format_performance(perf: Dict) -> str:
     periods = [
@@ -107,37 +164,55 @@ def format_performance(perf: Dict) -> str:
 
     return ' | '.join(perf_str)
 
-
 def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
-    """格式化要发送到Telegram的消息"""
+    if not (gainers or losers):   
+        return ""                                                                                                                                                                                                                                                             # 1. 首先展示概览信息                                                                                                                message = []                                                                                                                         if gainers:                                                                                                                              gainer_summary = "🔺 涨幅>5%: " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
+        
+    exchange_handler = ExchangeHandler()
+    message = []
+    if gainers:
+        gainer_summary = "🔺 涨幅>5%: " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
+        message.append(gainer_summary)
+
+    if losers:
+        loser_summary = "🔻 跌幅>5%: " + ", ".join([f"{token['symbol']}({token['performance']['min5']:.2f}%)" for token in losers])
+        message.append(loser_summary)
+
+    message.append("\n" + "=" * 30 + "\n")  # 分隔线
+     # 2. 然后是详细信息
+    if gainers:
+        message.append("🔺 详细信息:")
+        for token in gainers:
+            exchanges = token.get('exchanges', [])
+            sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
+            message.extend([
+                f"\n<b>{token['symbol']}</b> (#{token['rank']} {token['name']})",
+                f"<b>价格:</b> {token['price']}",
+                f"<b>市值:</b> {token['marketcap']}",
+                f"<b>交易量:</b> {token['volume']}",
+                f"<b>涨跌幅:</b> {format_performance(token['performance'])}",
+                f"<b>交易所:</b> {', '.join(sorted_exchanges)}\n"
+            ])
+
+    if losers:
+        message.append("\n🔻 详细信息:")
+        for token in losers:
+            exchanges = token.get('exchanges', [])
+            sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
+            message.extend([
+                f"\n<b>{token['symbol']}</b> (#{token['rank']} {token['name']})",
+                f"<b>价格:</b> {token['price']}",
+                f"<b>市值:</b> {token['marketcap']}",
+                f"<b>交易量:</b> {token['volume']}",
+                f"<b>涨跌幅:</b> {format_performance(token['performance'])}",
+                f"<b>交易所:</b> {', '.join(sorted_exchanges)}\n"
+            ])
+
+    # 3. 最后是更新时间
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    message = [f"<b>数据更新时间: {current_time}</b>\n"]
-
-    if gainers or losers:
-        if gainers:
-            message.append("\n🔺 <b>5分钟涨幅超过3%的代币:</b>")
-            for token in gainers:
-                message.extend([
-                    f"\n<b>代币:</b> #{token['rank']} {token['name']} ({token['symbol']})",
-                    f"<b>价格:</b> {token['price']}",
-                    f"<b>涨跌幅:</b> {format_performance(token['performance'])}",
-                    f"<b>交易所:</b> {', '.join(token['exchanges'])}\n"
-                ])
-
-        if losers:
-            message.append("\n🔻 <b>5分钟跌幅超过3%的代币:</b>")
-            for token in losers:
-                message.extend([
-                    f"\n<b>代币:</b> #{token['rank']} {token['name']} ({token['symbol']})",
-                    f"<b>价格:</b> {token['price']}",
-                    f"<b>涨跌幅:</b> {format_performance(token['performance'])}",
-                    f"<b>交易所:</b> {', '.join(token['exchanges'])}\n"
-                ])
-    else:
-        message.append("\n没有找到5分钟涨跌幅超过3%的代币")
+    message.append(f"\n更新时间: {current_time}")
 
     return '\n'.join(message)
-
 
 async def main():
     print("开始监控加密货币5分钟涨跌幅变化...")
@@ -146,7 +221,7 @@ async def main():
     try:
         while True:
             crypto_data = get_crypto_data()
-            gainers, losers = filter_tokens_by_5min_change(crypto_data)
+            gainers, losers = filter_tokens_by_conditions(crypto_data)
 
             # 格式化消息并发送到Telegram
             message = format_message(gainers, losers)
