@@ -166,49 +166,49 @@ def format_performance(perf: Dict) -> str:
 
 def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
     if not (gainers or losers):   
-        return ""                                                                                                                                                                                                                                                             # 1. 首先展示概览信息                                                                                                                message = []                                                                                                                         if gainers:                                                                                                                              gainer_summary = "🔺 涨幅>5%: " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
+        return ""
         
     exchange_handler = ExchangeHandler()
     message = []
+    
     if gainers:
-        gainer_summary = "🔺 涨幅>5%: " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
+        gainer_summary = "🟢 涨幅>5%: " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
         message.append(gainer_summary)
 
     if losers:
-        loser_summary = "🔻 跌幅>5%: " + ", ".join([f"{token['symbol']}({token['performance']['min5']:.2f}%)" for token in losers])
+        loser_summary = "🔴 跌幅>5%: " + ", ".join([f"{token['symbol']}({token['performance']['min5']:.2f}%)" for token in losers])
         message.append(loser_summary)
 
     message.append("\n" + "=" * 30 + "\n")  # 分隔线
-     # 2. 然后是详细信息
+    
     if gainers:
-        message.append("🔺 详细信息:")
+        message.append("🟢 详细信息:")
         for token in gainers:
             exchanges = token.get('exchanges', [])
             sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
             message.extend([
-                f"\n<b>{token['symbol']}</b> (#{token['rank']} {token['name']})",
-                f"<b>价格:</b> {token['price']}",
-                f"<b>市值:</b> {token['marketcap']}",
-                f"<b>交易量:</b> {token['volume']}",
-                f"<b>涨跌幅:</b> {format_performance(token['performance'])}",
-                f"<b>交易所:</b> {', '.join(sorted_exchanges)}\n"
+                f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
+                f'<b>价格:</b> {token["price"]}',
+                f'<b>市值:</b> {token["marketcap"]}',
+                f'<b>交易量:</b> {token["volume"]}',
+                f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
+                f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
             ])
 
     if losers:
-        message.append("\n🔻 详细信息:")
+        message.append('\n🔴 详细信息:')
         for token in losers:
             exchanges = token.get('exchanges', [])
             sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
             message.extend([
-                f"\n<b>{token['symbol']}</b> (#{token['rank']} {token['name']})",
-                f"<b>价格:</b> {token['price']}",
-                f"<b>市值:</b> {token['marketcap']}",
-                f"<b>交易量:</b> {token['volume']}",
-                f"<b>涨跌幅:</b> {format_performance(token['performance'])}",
-                f"<b>交易所:</b> {', '.join(sorted_exchanges)}\n"
+                f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
+                f'<b>价格:</b> {token["price"]}',
+                f'<b>市值:</b> {token["marketcap"]}',
+                f'<b>交易量:</b> {token["volume"]}',
+                f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
+                f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
             ])
 
-    # 3. 最后是更新时间
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     message.append(f"\n更新时间: {current_time}")
 
