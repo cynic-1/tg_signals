@@ -10,6 +10,12 @@ from config import ConfigLoader
 import logging
 from bn import USDTFuturesTrader
 
+# 在程序开始处添加日志配置
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
 # 从.env加载配置
 config = ConfigLoader.load_from_env()
 TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
@@ -172,58 +178,26 @@ def format_performance(perf: Dict) -> str:
 
     return ' | '.join(perf_str)
 
-async def main():
-    auto_long = True
-    auto_short = False
-    
-    while True:
-        try:
-            crypto_data = get_crypto_data()
-            gainers, losers = filter_tokens_by_conditions(crypto_data)
-
-            message = format_message(gainers, losers, auto_long, auto_short)
-            
-            if message:
-                await send_telegram_message(message)
-            
-            await asyncio.sleep(300)
-            
-        except KeyboardInterrupt:
-            print("\n程序已停止")
-            break
-        except Exception as e:
-            logging.error(f"发生错误: {e}")
-            await asyncio.sleep(60)
-
 class TradingExecutor:
     def __init__(self):
         self.trader = USDTFuturesTrader()
         self.leverage = 10
         self.usdt_amount = 200
-        self.tp_percent = 10.0
+        self.tp_percent = 100.0
         self.sl_percent = 5.0
-
-    async def send_trading_message(self, message: str):
-        """发送交易相关信息到个人账号"""
+    
+    def has_position(self, symbol: str) -> bool:
+        """检查是否已有该交易对的持仓"""
         try:
-            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-            
-            # 获取当前持仓信息
-            positions_info = self.get_positions_info()
-            
-            # 组合完整消息
-            full_message = f"{message}\n\n📊 当前持仓信息:\n{positions_info}"
-            
-            logging.info(f"Trading message: {full_message}")
-            
-            await bot.send_message(
-                chat_id=TELEGRAM_CHAT_ID_SELF,
-                text=full_message,
-                parse_mode='HTML'
-            )
+            position = self.trader.get_position(symbol)
+            if position and float(position.get('positionAmt', 0)) != 0:
+                logging.info(f"{symbol} 已有持仓，数量: {position.get('positionAmt')}")
+                return True
+            return False
         except Exception as e:
-            logging.error(f"发送交易消息失败: {e}")
-
+            logging.error(f"检查持仓状态时出错: {e}")
+            return False  # 出错时保守起见返回False，避免重复开仓
+    
     def get_positions_info(self) -> str:
         """获取格式化的持仓信息"""
         try:
@@ -234,7 +208,6 @@ class TradingExecutor:
             position_messages = []
             for position in positions:
                 if float(position.get('positionAmt', 0)) != 0:
-                    logging.info(f"Position data structure: {json.dumps(position, indent=2)}")
                     try:
                         symbol = position.get('symbol', 'Unknown')
                         position_amt = float(position.get('positionAmt', 0))
@@ -246,40 +219,66 @@ class TradingExecutor:
                         
                         position_msg = (
                             f"{symbol} ({side})\n"
-                            f"数量: {abs(position_amt)}\n"
-                            f"开仓价: {entry_price}\n"
+                            f"数量: {abs(position_amt):.8f}\n"
+                            f"开仓价: {entry_price:.8f}\n"
                             f"未实现盈亏: {pnl_emoji} {unrealized_profit:.3f} USDT"
                         )
                         position_messages.append(position_msg)
-                        
                     except (ValueError, TypeError) as e:
                         logging.error(f"处理持仓数据出错 {symbol}: {e}")
                         continue
 
             return "\n\n".join(position_messages) if position_messages else "暂无持仓"
-            
         except Exception as e:
             logging.error(f"获取持仓信息失败: {e}")
             return "获取持仓信息失败"
+        
+    async def send_trading_message(self, message: str):
+        """发送Telegram消息"""
+        try:
+            positions_info = self.get_positions_info()
+            full_message = f"{message}\n\n📊 当前持仓信息:\n{positions_info}"
+            
+            await self.bot.send_message(
+                chat_id=TELEGRAM_CHAT_ID_SELF,
+                text=full_message,
+                parse_mode='HTML'
+            )
+            logging.info(f"已发送Telegram消息: {full_message}")
+        except Exception as e:
+            logging.error(f"发送Telegram消息失败: {e}")
 
     async def execute_long(self, token: Dict) -> None:
         """执行做多交易"""
-        symbol = f"{token['symbol']}USDT"
-        
         try:
-            # 检查交易对是否存在
-            symbol_info = self.trader.get_symbol_info(symbol)
-        except ValueError:
-            logging.info(f"币安无此交易对: {symbol}")
-            return
-        except Exception as e:
-            logging.error(f"检查交易对时发生错误 {symbol}: {e}")
-            return
+            # 检查必要的字段是否存在
+            if 'symbol' not in token:
+                logging.error("Token missing symbol field")
+                return
+                
+            symbol = f"{token['symbol']}USDT"
+            
+            # 首先检查是否已有持仓
+            if self.has_position(symbol):
+                logging.info(f"跳过 {symbol} 因为已有持仓")
+                return
 
-        try:
+            # 检查交易对是否存在
+            try:
+                symbol_info = self.trader.get_symbol_info(symbol)
+            except ValueError:
+                logging.info(f"币安无此交易对: {symbol}")
+                return
+            except Exception as e:
+                logging.error(f"检查交易对时发生错误 {symbol}: {e}")
+                return
+
             logging.info(f"发现做多机会: {symbol}")
+            
+            # 设置杠杆
             self.trader.set_leverage(symbol, self.leverage)
             
+            # 执行开仓
             response = self.trader.market_open_long_with_tp_sl(
                 symbol=symbol,
                 usdt_amount=self.usdt_amount,
@@ -296,30 +295,42 @@ class TradingExecutor:
                     f"止损: {self.sl_percent}%"
                 )
                 logging.info(f"做多开仓成功: {response}")
+                await self.send_trading_message(message)
             
         except Exception as e:
-            logging.error(f"做多开仓失败 {symbol}: {e}")
-        
-        await self.send_trading_message(message)
+            logging.error(f"做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
 
     async def execute_short(self, token: Dict) -> None:
         """执行做空交易"""
-        symbol = f"{token['symbol']}USDT"
-        
         try:
-            # 检查交易对是否存在
-            symbol_info = self.trader.get_symbol_info(symbol)
-        except ValueError:
-            logging.info(f"币安无此交易对: {symbol}")
-            return
-        except Exception as e:
-            logging.error(f"检查交易对时发生错误 {symbol}: {e}")
-            return
+            # 检查必要的字段是否存在
+            if 'symbol' not in token:
+                logging.error("Token missing symbol field")
+                return
+                
+            symbol = f"{token['symbol']}USDT"
+            
+            # 首先检查是否已有持仓
+            if self.has_position(symbol):
+                logging.info(f"跳过 {symbol} 因为已有持仓")
+                return
 
-        try:
+            # 检查交易对是否存在
+            try:
+                symbol_info = self.trader.get_symbol_info(symbol)
+            except ValueError:
+                logging.info(f"币安无此交易对: {symbol}")
+                return
+            except Exception as e:
+                logging.error(f"检查交易对时发生错误 {symbol}: {e}")
+                return
+
             logging.info(f"发现做空机会: {symbol}")
+            
+            # 设置杠杆
             self.trader.set_leverage(symbol, self.leverage)
             
+            # 执行开仓
             response = self.trader.market_open_short_with_tp_sl(
                 symbol=symbol,
                 usdt_amount=self.usdt_amount,
@@ -336,11 +347,10 @@ class TradingExecutor:
                     f"止损: {self.sl_percent}%"
                 )
                 logging.info(f"做空开仓成功: {response}")
+                await self.send_trading_message(message)
             
         except Exception as e:
-            logging.error(f"做空开仓失败 {symbol}: {e}")
-        
-        await self.send_trading_message(message)
+            logging.error(f"做空开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
 
 def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
     """格式化消息内容"""
