@@ -7,12 +7,14 @@ from datetime import datetime
 import telegram
 import asyncio
 from config import ConfigLoader
+import logging
+from bn import USDTFuturesTrader
 
 # 从.env加载配置
 config = ConfigLoader.load_from_env()
 TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = config['TELEGRAM_CHAT_ID']
-
+TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
 
 async def send_telegram_message(message: str):
     """发送消息到Telegram"""
@@ -98,6 +100,7 @@ class TokenFilter:
         filters = [
             self.check_exchange_requirement,
             self.check_price_change,
+            self.check_volume_change,
             # 在这里可以轻松添加新的筛选条件
         ]
 
@@ -169,85 +172,273 @@ def format_performance(perf: Dict) -> str:
 
     return ' | '.join(perf_str)
 
+async def main():
+    auto_long = True
+    auto_short = False
+    
+    while True:
+        try:
+            crypto_data = get_crypto_data()
+            gainers, losers = filter_tokens_by_conditions(crypto_data)
+
+            message = format_message(gainers, losers, auto_long, auto_short)
+            
+            if message:
+                await send_telegram_message(message)
+            
+            await asyncio.sleep(300)
+            
+        except KeyboardInterrupt:
+            print("\n程序已停止")
+            break
+        except Exception as e:
+            logging.error(f"发生错误: {e}")
+            await asyncio.sleep(60)
+
+class TradingExecutor:
+    def __init__(self):
+        self.trader = USDTFuturesTrader()
+        self.leverage = 10
+        self.usdt_amount = 200
+        self.tp_percent = 10.0
+        self.sl_percent = 5.0
+
+    async def send_trading_message(self, message: str):
+        """发送交易相关信息到个人账号"""
+        try:
+            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
+            
+            # 获取当前持仓信息
+            positions_info = self.get_positions_info()
+            
+            # 组合完整消息
+            full_message = f"{message}\n\n📊 当前持仓信息:\n{positions_info}"
+            
+            logging.info(f"Trading message: {full_message}")
+            
+            await bot.send_message(
+                chat_id=TELEGRAM_CHAT_ID_SELF,
+                text=full_message,
+                parse_mode='HTML'
+            )
+        except Exception as e:
+            logging.error(f"发送交易消息失败: {e}")
+
+    def get_positions_info(self) -> str:
+        """获取格式化的持仓信息"""
+        try:
+            positions = self.trader.get_all_positions()
+            if not positions:
+                return "暂无持仓"
+
+            position_messages = []
+            for position in positions:
+                if float(position.get('positionAmt', 0)) != 0:
+                    logging.info(f"Position data structure: {json.dumps(position, indent=2)}")
+                    try:
+                        symbol = position.get('symbol', 'Unknown')
+                        position_amt = float(position.get('positionAmt', 0))
+                        entry_price = float(position.get('entryPrice', 0))
+                        unrealized_profit = float(position.get('unRealizedProfit', 0))
+                        
+                        side = "多" if position_amt > 0 else "空"
+                        pnl_emoji = "📈" if unrealized_profit > 0 else "📉"
+                        
+                        position_msg = (
+                            f"{symbol} ({side})\n"
+                            f"数量: {abs(position_amt)}\n"
+                            f"开仓价: {entry_price}\n"
+                            f"未实现盈亏: {pnl_emoji} {unrealized_profit:.3f} USDT"
+                        )
+                        position_messages.append(position_msg)
+                        
+                    except (ValueError, TypeError) as e:
+                        logging.error(f"处理持仓数据出错 {symbol}: {e}")
+                        continue
+
+            return "\n\n".join(position_messages) if position_messages else "暂无持仓"
+            
+        except Exception as e:
+            logging.error(f"获取持仓信息失败: {e}")
+            return "获取持仓信息失败"
+
+    async def execute_long(self, token: Dict) -> None:
+        """执行做多交易"""
+        symbol = f"{token['symbol']}USDT"
+        
+        try:
+            # 检查交易对是否存在
+            symbol_info = self.trader.get_symbol_info(symbol)
+        except ValueError:
+            logging.info(f"币安无此交易对: {symbol}")
+            return
+        except Exception as e:
+            logging.error(f"检查交易对时发生错误 {symbol}: {e}")
+            return
+
+        try:
+            logging.info(f"发现做多机会: {symbol}")
+            self.trader.set_leverage(symbol, self.leverage)
+            
+            response = self.trader.market_open_long_with_tp_sl(
+                symbol=symbol,
+                usdt_amount=self.usdt_amount,
+                tp_percent=self.tp_percent,
+                sl_percent=self.sl_percent
+            )
+            
+            if response:
+                message = (
+                    f"🎯 开多 {symbol}\n"
+                    f"金额: {self.usdt_amount} USDT\n"
+                    f"杠杆: {self.leverage}X\n"
+                    f"止盈: {self.tp_percent}%\n"
+                    f"止损: {self.sl_percent}%"
+                )
+                logging.info(f"做多开仓成功: {response}")
+            
+        except Exception as e:
+            logging.error(f"做多开仓失败 {symbol}: {e}")
+        
+        await self.send_trading_message(message)
+
+    async def execute_short(self, token: Dict) -> None:
+        """执行做空交易"""
+        symbol = f"{token['symbol']}USDT"
+        
+        try:
+            # 检查交易对是否存在
+            symbol_info = self.trader.get_symbol_info(symbol)
+        except ValueError:
+            logging.info(f"币安无此交易对: {symbol}")
+            return
+        except Exception as e:
+            logging.error(f"检查交易对时发生错误 {symbol}: {e}")
+            return
+
+        try:
+            logging.info(f"发现做空机会: {symbol}")
+            self.trader.set_leverage(symbol, self.leverage)
+            
+            response = self.trader.market_open_short_with_tp_sl(
+                symbol=symbol,
+                usdt_amount=self.usdt_amount,
+                tp_percent=self.tp_percent,
+                sl_percent=self.sl_percent
+            )
+            
+            if response:
+                message = (
+                    f"🎯 开空 {symbol}\n"
+                    f"金额: {self.usdt_amount} USDT\n"
+                    f"杠杆: {self.leverage}X\n"
+                    f"止盈: {self.tp_percent}%\n"
+                    f"止损: {self.sl_percent}%"
+                )
+                logging.info(f"做空开仓成功: {response}")
+            
+        except Exception as e:
+            logging.error(f"做空开仓失败 {symbol}: {e}")
+        
+        await self.send_trading_message(message)
+
 def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
+    """格式化消息内容"""
     if not (gainers or losers):   
-        return ""
+        return None
         
     exchange_handler = ExchangeHandler()
     message = []
     
+    # 处理上涨的币种
     if gainers:
-        gainer_summary = "🟢 " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
+        gainer_summary = "🟢 " + ", ".join([
+            f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" 
+            for token in gainers
+        ])
         message.append(gainer_summary)
 
+    # 处理下跌的币种
     if losers:
-        loser_summary = "🔴 " + ", ".join([f"{token['symbol']}({token['performance']['min5']:.2f}%)" for token in losers])
+        loser_summary = "🔴 " + ", ".join([
+            f"{token['symbol']}({token['performance']['min5']:.2f}%)" 
+            for token in losers
+        ])
         message.append(loser_summary)
 
-    message.append("\n" + "=" * 30 + "\n")  # 分隔线
+    if len(message) > 0:
+        message.append("\n" + "=" * 30 + "\n")
     
+    # 详细信息部分
     if gainers:
         message.append("🟢 详细信息:")
         for token in gainers:
-            exchanges = token.get('exchanges', [])
-            sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
-            message.extend([
-                f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
-                f'<b>价格:</b> {token["price"]}',
-                f'<b>市值:</b> {token["marketcap"]}',
-                f'<b>成交额:</b> {token["volume"]}',
-                f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
-                f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
-            ])
+            message.extend(_format_token_details(token, exchange_handler))
 
     if losers:
         message.append('\n🔴 详细信息:')
         for token in losers:
-            exchanges = token.get('exchanges', [])
-            sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
-            message.extend([
-                f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
-                f'<b>价格:</b> {token["price"]}',
-                f'<b>市值:</b> {token["marketcap"]}',
-                f'<b>成交额:</b> {token["volume"]}',
-                f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
-                f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
-            ])
+            message.extend(_format_token_details(token, exchange_handler))
 
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     message.append(f"\n更新时间: {current_time}")
+    
+    final_message = '\n'.join(message)
+    logging.info(f"Telegram message: {final_message}")
+    
+    return final_message
 
-    return '\n'.join(message)
+def _format_token_details(token: Dict, exchange_handler: ExchangeHandler) -> List[str]:
+    """格式化单个代币的详细信息"""
+    exchanges = token.get('exchanges', [])
+    sorted_exchanges = exchange_handler.sort_exchanges(exchanges)
+    
+    return [
+        f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
+        f'<b>价格:</b> {token["price"]}',
+        f'<b>市值:</b> {token["marketcap"]}',
+        f'<b>交易量:</b> {token["volume"]}',
+        f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
+        f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
+    ]
 
 async def main():
-    print("开始监控加密货币5分钟涨跌幅变化...")
-    print("按 Ctrl+C 停止监控")
-
-    try:
-        while True:
+    trading_executor = TradingExecutor()
+    auto_long = True
+    auto_short = False
+    
+    while True:
+        try:
+            start_time = time.time()
+            
             crypto_data = get_crypto_data()
             gainers, losers = filter_tokens_by_conditions(crypto_data)
 
-            # 格式化消息并发送到Telegram
+            # 执行交易
+            if auto_long:
+                for token in gainers:
+                    await trading_executor.execute_long(token)
+                    
+            if auto_short:
+                for token in losers:
+                    await trading_executor.execute_short(token)
+
+            # 发送市场监控消息到群组
             message = format_message(gainers, losers)
-            await send_telegram_message(message)
+            if message:
+                await send_telegram_message(message)
 
-            # 控制台也打印消息
-            print(message)
-
-            # 倒计时
-            for i in range(60, 0, -1):
-                print(f"\r下次更新倒计时: {i}秒", end='', flush=True)
-                await asyncio.sleep(1)
-
-    except KeyboardInterrupt:
-        print("\n\n已停止监控")
-        await send_telegram_message("🔄 监控已停止")
-    except Exception as e:
-        error_message = f"\n发生错误: {e}"
-        print(error_message)
-        await send_telegram_message(f"❌ {error_message}")
-
+            execution_time = time.time() - start_time
+            
+            logging.info(f"本次执行耗时: {execution_time:.2f}秒")
+            await asyncio.sleep(60)
+            
+        except KeyboardInterrupt:
+            print("\n程序已停止")
+            break
+        except Exception as e:
+            logging.error(f"发生错误: {e}")
+            await asyncio.sleep(60)
 
 if __name__ == "__main__":
     # 安装必要的包
