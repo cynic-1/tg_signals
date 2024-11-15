@@ -73,7 +73,8 @@ class TokenFilter:
         # 定义主流交易所列表
         self.major_exchanges = {'bybit', 'binance', 'gateio', 'bitget'}
         # 最小价格变化阈值
-        self.change_threshold = 5
+        self.change_threshold_5min = 5
+        self.change_threshold_1min = 2
 
     def check_exchange_requirement(self, token: Dict) -> bool:
         """检查交易所要求"""
@@ -82,10 +83,14 @@ class TokenFilter:
 
     def check_price_change(self, token: Dict) -> bool:
         """检查价格变化要求"""
-        if 'performance' in token and 'min5' in token['performance']:
+        if 'performance' in token and 'min5' in token['performance'] and 'min1' in token['performance']:
             min5_change = token['performance']['min5']
-            return abs(min5_change) > self.change_threshold
+            min1_change = token['performance']['min1']
+            return abs(min5_change) > self.change_threshold_5min or abs(min1_change) > self.change_threshold_1min
         return False
+
+    def check_volume_change(self, token: Dict) -> bool:
+        return token['volume'] > 5000000
 
     def apply_filters(self, token: Dict) -> bool:
         """应用所有筛选条件"""
@@ -172,11 +177,11 @@ def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
     message = []
     
     if gainers:
-        gainer_summary = "🟢 涨幅>5%: " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
+        gainer_summary = "🟢 " + ", ".join([f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" for token in gainers])
         message.append(gainer_summary)
 
     if losers:
-        loser_summary = "🔴 跌幅>5%: " + ", ".join([f"{token['symbol']}({token['performance']['min5']:.2f}%)" for token in losers])
+        loser_summary = "🔴 " + ", ".join([f"{token['symbol']}({token['performance']['min5']:.2f}%)" for token in losers])
         message.append(loser_summary)
 
     message.append("\n" + "=" * 30 + "\n")  # 分隔线
@@ -190,7 +195,7 @@ def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
                 f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
                 f'<b>价格:</b> {token["price"]}',
                 f'<b>市值:</b> {token["marketcap"]}',
-                f'<b>交易量:</b> {token["volume"]}',
+                f'<b>成交额:</b> {token["volume"]}',
                 f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
                 f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
             ])
@@ -204,7 +209,7 @@ def format_message(gainers: List[Dict], losers: List[Dict]) -> str:
                 f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
                 f'<b>价格:</b> {token["price"]}',
                 f'<b>市值:</b> {token["marketcap"]}',
-                f'<b>交易量:</b> {token["volume"]}',
+                f'<b>成交额:</b> {token["volume"]}',
                 f'<b>涨跌幅:</b> {format_performance(token["performance"])}',
                 f'<b>交易所:</b> {", ".join(sorted_exchanges)}\n'
             ])
