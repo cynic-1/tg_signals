@@ -1,215 +1,256 @@
-import time
 import logging
-from typing import Dict
+from binance.um_futures import UMFutures  # 改用 UMFutures
+from binance.websocket.um_futures.websocket_client import UMFuturesWebsocketClient
+import time
+from typing import Dict, Set
 from decimal import Decimal
 from config import ConfigLoader
-from binance.um_futures import UMFutures
-from binance.websocket.um_futures.websocket_client import UMFuturesWebsocketClient
-import asyncio
-import telegram
+import json
+
 
 config = ConfigLoader.load_from_env()
-TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
-TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
 API_KEY = config['api_key']
 API_SECRET = config['api_secret']
-
-
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-class DynamicStopLossManager:
-    def __init__(self):
-        self.client = UMFutures(
-            key=API_KEY,
-            secret=API_SECRET
-        )
+class FuturesTradeManager:
+    def __init__(self, api_key: str, api_secret: str):
+        self.client = UMFutures(key=api_key, secret=api_secret)  # 使用 UMFutures
         self.ws_client = None
-        self.positions = {}  # 存储持仓信息
-        self.stop_loss_levels = {}  # 存储止损等级
-        self.running = True
+        self.active_positions: Dict[str, Dict] = {}
+        self.monitored_symbols: Set[str] = set()
+        logging.getLogger('websockets').setLevel(logging.DEBUG)
 
-    def message_handler(self, _, message):
-        """处理WebSocket消息
-        第一个参数是websocket client实例
-        第二个参数是消息内容
+    def get_active_positions(self) -> Dict[str, Dict]:
+            """获取所有活跃持仓"""
+            try:
+                account_info = self.client.account()
+                positions = account_info.get('positions', [])
+                
+                active_positions = {}
+                for position in positions:
+                    amount = Decimal(position['positionAmt'])
+                    if amount != 0:  # 只关注持仓量不为0的仓位
+                        symbol = position['symbol']
+                        # 计算入场价格（通过名义价值和持仓量）
+                        notional = Decimal(position['notional'])
+                        entry_price = abs(notional / amount) if amount != 0 else Decimal('0')
+                        
+                        active_positions[symbol] = {
+                            'amount': amount,
+                            'entry_price': entry_price,
+                            'current_stop_loss': entry_price * Decimal('0.95'),  # 初始止损设为开仓价的95%
+                            'notional': notional,
+                            'unrealized_profit': Decimal(position['unrealizedProfit'])
+                        }
+                        logging.info(f"检测到持仓 {symbol}: 数量={amount}, 入场价={entry_price}, "
+                                f"未实现盈亏={position['unrealizedProfit']}")
+                return active_positions
+            except Exception as e:
+                logging.error(f"获取持仓信息失败: {str(e)}")
+                return {}
+
+    def update_websocket_subscriptions(self):
+        """更新websocket订阅"""
+        current_positions = set(self.active_positions.keys())
+        
+        # 需要新增订阅的交易对
+        new_symbols = current_positions - self.monitored_symbols
+        # 需要取消订阅的交易对
+        remove_symbols = self.monitored_symbols - current_positions
+
+        if self.ws_client:
+            try:
+                # 取消不再持仓的交易对订阅
+                for symbol in remove_symbols:
+                    stream_name = f"{symbol.lower()}@markPrice@1s"
+                    self.ws_client.unsubscribe(stream=[stream_name])
+                    logging.info(f"取消订阅 {symbol} 的标记价格推送")
+
+                # 订阅新持仓的交易对
+                if new_symbols:
+                    streams = [f"{symbol.lower()}@markPrice@1s" for symbol in new_symbols]
+                    self.ws_client.subscribe(stream=streams)
+                    logging.info(f"订阅标记价格推送streams: {streams}")
+
+                self.monitored_symbols = current_positions
+                
+            except Exception as e:
+                logging.error(f"更新WebSocket订阅失败: {str(e)}")
+                logging.exception(e)
+
+    def start_monitoring(self):
+        """开始监控持仓"""
+        try:
+            def on_open(ws):
+                logging.info("WebSocket连接已建立")
+
+            def on_close(ws, close_status_code, close_msg):
+                logging.info(f"WebSocket连接已关闭: {close_status_code} - {close_msg}")
+
+            def on_error(ws, error):
+                logging.error(f"WebSocket错误: {error}")
+
+            # 初始化websocket客户端，使用组合流
+            self.ws_client = UMFuturesWebsocketClient(
+                on_message=self.handle_price_update,
+                on_open=on_open,
+                on_close=on_close,
+                on_error=on_error,
+                is_combined=True
+            )
+
+            # 先获取初始持仓
+            new_positions = self.get_active_positions()
+            self.active_positions = new_positions
+            # 立即进行第一次订阅
+            self.update_websocket_subscriptions()
+            logging.info(f"初始活跃持仓: {list(self.active_positions.keys())}")
+
+            while True:
+                # 获取最新持仓情况
+                new_positions = self.get_active_positions()
+                
+                # 检查持仓是否有变化
+                if new_positions != self.active_positions:
+                    self.active_positions = new_positions
+                    self.update_websocket_subscriptions()
+                    logging.info(f"持仓已更新: {list(self.active_positions.keys())}")
+
+                time.sleep(60)  # 每分钟检查一次持仓情况
+
+        except Exception as e:
+            logging.error(f"监控过程发生错误: {str(e)}")
+            logging.exception(e)
+        finally:
+            if self.ws_client:
+                self.ws_client.stop()
+
+    def handle_price_update(self, _, message):
+        """处理实时价格更新"""
+        try:
+            logging.debug(f"收到原始消息: {message}")
+
+            # 处理订阅确认消息
+            if 'result' in message:
+                logging.debug("收到订阅确认消息")
+                return
+            
+                # 如果消息是字符串，尝试解析为字典
+            if isinstance(message, str):
+                try:
+                    message = json.loads(message)
+                except json.JSONDecodeError as e:
+                    logging.debug(f"无法解析JSON消息: {e}")
+                    return
+            
+            logging.debug(f"处理标记价格推送前")
+            # 处理标记价格推送
+            if 'stream' in message and 'data' in message:
+                logging.debug(f"开始处理标记价格推送")
+                data = message['data']
+                if data['e'] == 'markPriceUpdate':
+                    symbol = data['s']
+                    current_price = Decimal(data['p'])  # 标记价格
+                    
+                    if symbol in self.active_positions:
+                        position = self.active_positions[symbol]
+                        entry_price = position['entry_price']
+                        
+                        # 计算价格变动百分比
+                        price_change_percent = ((current_price - entry_price) / entry_price) * Decimal('100')
+                        
+                        logging.info(f"{symbol} 当前标记价格: {current_price}, 入场价: {entry_price}, "
+                                f"价格变动: {price_change_percent}%")
+                        
+                         # 只有在价格上涨时才考虑调整止损
+                        if price_change_percent >= Decimal('10'):  # 至少要涨10%才考虑调整止损
+                            new_stop_loss = self.calculate_new_stop_loss(price_change_percent, entry_price)
+                            
+                            # 只有当新的止损价高于当前止损价时才更新
+                            if new_stop_loss > position['current_stop_loss']:
+                                self.update_stop_loss_order(symbol, new_stop_loss)
+                                position['current_stop_loss'] = new_stop_loss
+                                logging.info(f"{symbol} 更新止损价到: {new_stop_loss}")
+
+        except Exception as e:
+            logging.error(f"处理价格更新失败: {str(e)}")
+            logging.debug(f"错误消息内容: {message}")
+            logging.exception(e) 
+
+    def calculate_new_stop_loss(self, price_change_percent: Decimal, entry_price: Decimal) -> Decimal:
+        """
+        计算新的止损价格
+        每当价格上涨10%，止损价上调5%
+        例如：
+        - 涨幅10%-19.99%，止损为开仓价的105%
+        - 涨幅20%-29.99%，止损为开仓价的110%
+        - 涨幅30%-39.99%，止损为开仓价的115%
+        以此类推
         """
         try:
-            if isinstance(message, dict):
-                if 'e' not in message:  # 忽略非行情消息
-                    return
-                    
-                symbol = message['s']
-                if symbol not in self.positions:
-                    return
-                    
-                current_price = float(message['c'])  # 最新价格
-                self.check_and_update_stop_loss(symbol, current_price)
-            else:
-                logging.debug(f"收到非字典消息: {message}")
-                
-        except Exception as e:
-            logging.error(f"处理WebSocket消息失败: {e}")
-
-    async def send_telegram_message(self, message: str):
-        """发送Telegram消息"""
-        try:
-            bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-            await bot.send_message(
-                chat_id=TELEGRAM_CHAT_ID_SELF,
-                text=message,
-                parse_mode='HTML'
-            )
-            logging.info(f"已发送Telegram消息: {message}")
-        except Exception as e:
-            logging.error(f"发送Telegram消息失败: {e}")
-
-    def update_positions(self):
-        """更新持仓信息"""
-        try:
-            positions = self.client.get_position_risk()
-            new_positions = {}
+            # 计算价格上涨了多少个10%
+            rise_times = int(price_change_percent // Decimal('10'))
             
-            for position in positions:
-                amt = float(position['positionAmt'])
-                if amt != 0:
-                    symbol = position['symbol']
-                    new_positions[symbol] = {
-                        'entry_price': float(position['entryPrice']),
-                        'position_amt': amt,
-                        'symbol': symbol
-                    }
-                    
-                    if symbol not in self.stop_loss_levels:
-                        self.stop_loss_levels[symbol] = 0
-
-            # 检查是否有新的或已关闭的持仓
-            old_symbols = set(self.positions.keys())
-            new_symbols = set(new_positions.keys())
+            # 相应地止损价上调多少个5%
+            stop_loss_percent = Decimal('100') + (rise_times * Decimal('5'))
             
-            self.positions = new_positions
-            return new_symbols, old_symbols - new_symbols
+            # 计算新的止损价格
+            new_stop_loss = entry_price * (stop_loss_percent / Decimal('100'))
+            
+            logging.info(f"价格涨幅: {price_change_percent}%, 上涨{rise_times}个10%, "
+                        f"止损调整为开仓价的{stop_loss_percent}%, "
+                        f"新止损价: {new_stop_loss}")
+            
+            return new_stop_loss
             
         except Exception as e:
-            logging.error(f"更新持仓信息失败: {e}")
-            return set(), set()
+            logging.error(f"计算止损价格时发生错误: {str(e)}")
+            return entry_price * Decimal('0.95')  # 出错时返回默认止损价    
 
-    def check_and_update_stop_loss(self, symbol: str, current_price: float):
-        """检查并更新止损"""
-        try:
-            if symbol not in self.positions:
-                return
-                
-            position = self.positions[symbol]
-            entry_price = position['entry_price']
-            
-            # 计算价格涨幅
-            price_increase = ((current_price - entry_price) / entry_price) * 100
-            new_level = int(price_increase / 10)  # 每10%一个等级
-            
-            logging.debug(f"检查止损 {symbol}: 当前价格={current_price}, 入场价格={entry_price}, "
-                     f"涨幅={price_increase:.2f}%, 当前等级={new_level}, "
-                     f"现有等级={self.stop_loss_levels.get(symbol, 0)}")
-        
-
-            if new_level > self.stop_loss_levels.get(symbol, 0):
-                # 计算新的止损价格 (entry_price * (1 + 5 * level%))
-                stop_loss_percent = 1 + (5 * new_level) / 100
-                new_stop_loss = entry_price * stop_loss_percent
-                
-                logging.info(f"触发止损更新 {symbol}: 新止损价格={new_stop_loss}, 新等级={new_level}") 
-                
-                self.update_stop_loss_order(
-                    symbol=symbol,
-                    stop_price=new_stop_loss,
-                    new_level=new_level
+    def start_monitoring(self):
+            """开始监控持仓"""
+            try:
+                # 初始化websocket客户端，使用组合流
+                self.ws_client = UMFuturesWebsocketClient(
+                    on_message=self.handle_price_update,
+                    is_combined=True  # 使用组合流
                 )
-                
-        except Exception as e:
-            logging.error(f"检查止损更新失败 {symbol}: {e}")
 
-    def update_stop_loss_order(self, symbol: str, stop_price: float, new_level: int):
-        """更新止损订单"""
-        try:
-            position = self.positions[symbol]
-            
-            # 取消现有止损订单
-            self.client.cancel_all_orders(symbol=symbol)
-            
-            # 创建新的止损市价单
-            response = self.client.new_order(
-                symbol=symbol,
-                side="SELL" if position['position_amt'] > 0 else "BUY",
-                type="STOP_MARKET",
-                stopPrice=stop_price,
-                quantity=abs(position['position_amt']),
-                timeInForce="GTC"
-            )
-            
-            if response:
-                self.stop_loss_levels[symbol] = new_level
-                asyncio.create_task(self.send_telegram_message(
-                    f"🔄 更新止损 {symbol}\n"
-                    f"价格涨幅达到: {new_level * 10}%\n"
-                    f"新止损价格: {stop_price}\n"
-                    f"（开仓价格的 {100 + 5 * new_level}%）"
-                ))
-                logging.info(f"已更新{symbol}的止损订单: {response}")
-                
-        except Exception as e:
-            logging.error(f"更新止损订单失败 {symbol}: {e}")
+                # 先获取初始持仓
+                new_positions = self.get_active_positions()
+                self.active_positions = new_positions
+                # 立即进行第一次订阅
+                self.update_websocket_subscriptions()
+                logging.info(f"初始活跃持仓: {list(self.active_positions.keys())}")
 
-    def start_websocket(self):
-        """启动WebSocket连接"""
-        try:
-            if self.ws_client:
-                self.ws_client.stop()
-                
-            self.ws_client = UMFuturesWebsocketClient(
-                on_message=self.message_handler
-            )
-            
-            # 订阅所有持仓的价格流
-            for symbol in self.positions:
-                self.ws_client.ticker(symbol=symbol.lower())
-                logging.info(f"订阅{symbol}的价格流")
-                
-        except Exception as e:
-            logging.error(f"启动WebSocket失败: {e}")
+                while True:
+                    # 获取最新持仓情况
+                    new_positions = self.get_active_positions()
+                    
+                    # 检查持仓是否有变化
+                    if new_positions != self.active_positions:
+                        self.active_positions = new_positions
+                        self.update_websocket_subscriptions()
+                        logging.info(f"持仓已更新: {list(self.active_positions.keys())}")
 
-    def run(self):
-        """运行主程序"""
-        try:
-            while self.running:
-                current_time = time.time()
-                # 更新持仓信息
-                new_symbols, removed_symbols = self.update_positions()
-                
-                 # 检查是否需要重启WebSocket
-                need_restart = (
-                    new_symbols or 
-                    removed_symbols or 
-                    (current_time - last_ws_check > ws_check_interval and not self.ws_client)
-                )
-                
-                if need_restart:
-                    self.start_websocket()
-                    last_ws_check = current_time
-                
-                time.sleep(3)  # 每30秒检查一次持仓变化
-                
-        except KeyboardInterrupt:
-            self.running = False
-            if self.ws_client:
-                self.ws_client.stop()
-            logging.info("程序已停止")
-        except Exception as e:
-            logging.error(f"程序运行出错: {e}")
-            if self.ws_client:
-                self.ws_client.stop()
+                    time.sleep(60)  # 每分钟检查一次持仓情况
+
+            except Exception as e:
+                logging.error(f"监控过程发生错误: {str(e)}")
+                logging.exception(e)
+            finally:
+                if self.ws_client:
+                    self.ws_client.stop()
 
 if __name__ == "__main__":
-    manager = DynamicStopLossManager()
-    manager.run()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    
+    manager = FuturesTradeManager(API_KEY, API_SECRET)
+    manager.start_monitoring()
