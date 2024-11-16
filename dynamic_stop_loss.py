@@ -6,11 +6,16 @@ from typing import Dict, Set
 from decimal import Decimal
 from config import ConfigLoader
 import json
-
+import asyncio
+from functools import partial
+import telegram
 
 config = ConfigLoader.load_from_env()
 API_KEY = config['api_key']
 API_SECRET = config['api_secret']
+TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
+TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
@@ -21,8 +26,37 @@ class FuturesTradeManager:
         self.client = UMFutures(key=api_key, secret=api_secret)  # 使用 UMFutures
         self.ws_client = None
         self.active_positions: Dict[str, Dict] = {}
+        self.bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         self.monitored_symbols: Set[str] = set()
         logging.getLogger('websockets').setLevel(logging.DEBUG)
+
+    def send_telegram_message(self, message: str):
+            """发送消息到Telegram"""
+            try:
+                max_length = 4096
+                for i in range(0, len(message), max_length):
+                    chunk = message[i:i + max_length]
+                    self.bot.send_message(
+                        chat_id=TELEGRAM_CHAT_ID_SELF,
+                        text=chunk,
+                        parse_mode='HTML'
+                    )
+            except Exception as e:
+                logging.error(f"发送Telegram消息时出错: {e}")
+
+    def format_position_info(self) -> str:
+        """格式化持仓信息"""
+        message = "当前持仓情况:\n"
+        for symbol, position in self.active_positions.items():
+            message += f"\n{symbol}:\n"
+            message += f"持仓量: {position['amount']}\n"
+            message += f"入场价: {position['entry_price']}\n"
+            message += f"当前止损: {position['current_stop_loss']}\n"
+            message += f"未实现盈亏: {position['unrealized_profit']}\n"
+            message += "------------------------"
+        return message
 
     def get_active_positions(self) -> Dict[str, Dict]:
             """获取所有活跃持仓"""
@@ -147,10 +181,8 @@ class FuturesTradeManager:
                     logging.debug(f"无法解析JSON消息: {e}")
                     return
             
-            logging.debug(f"处理标记价格推送前")
             # 处理标记价格推送
             if 'stream' in message and 'data' in message:
-                logging.debug(f"开始处理标记价格推送")
                 data = message['data']
                 if data['e'] == 'markPriceUpdate':
                     symbol = data['s']
@@ -174,6 +206,18 @@ class FuturesTradeManager:
                             if new_stop_loss > position['current_stop_loss']:
                                 self.update_stop_loss_order(symbol, new_stop_loss)
                                 position['current_stop_loss'] = new_stop_loss
+
+                                # 发送Telegram通知
+                                message = (
+                                    f"🔄 止损价格调整通知\n\n"
+                                    f"交易对: {symbol}\n"
+                                    f"当前价格: {current_price}\n"
+                                    f"价格涨幅: {price_change_percent}%\n"
+                                    f"新止损价: {new_stop_loss}\n\n"
+                                    f"{self.format_position_info()}"
+                                )
+                                self.send_telegram_message(message)
+
                                 logging.info(f"{symbol} 更新止损价到: {new_stop_loss}")
 
         except Exception as e:
@@ -214,30 +258,35 @@ class FuturesTradeManager:
     def start_monitoring(self):
             """开始监控持仓"""
             try:
-                # 初始化websocket客户端，使用组合流
                 self.ws_client = UMFuturesWebsocketClient(
                     on_message=self.handle_price_update,
-                    is_combined=True  # 使用组合流
+                    is_combined=True
                 )
 
-                # 先获取初始持仓
                 new_positions = self.get_active_positions()
                 self.active_positions = new_positions
-                # 立即进行第一次订阅
                 self.update_websocket_subscriptions()
+                
+                # 发送初始持仓信息到Telegram
+                initial_message = "🔵 开始监控持仓\n\n" + self.format_position_info()
+                self.send_telegram_message(initial_message)
+                
                 logging.info(f"初始活跃持仓: {list(self.active_positions.keys())}")
 
                 while True:
-                    # 获取最新持仓情况
                     new_positions = self.get_active_positions()
                     
-                    # 检查持仓是否有变化
                     if new_positions != self.active_positions:
                         self.active_positions = new_positions
                         self.update_websocket_subscriptions()
+                        
+                        # 发送持仓更新信息到Telegram
+                        update_message = "🔄 持仓发生变化\n\n" + self.format_position_info()
+                        self.send_telegram_message(update_message)
+                        
                         logging.info(f"持仓已更新: {list(self.active_positions.keys())}")
 
-                    time.sleep(60)  # 每分钟检查一次持仓情况
+                    time.sleep(60)
 
             except Exception as e:
                 logging.error(f"监控过程发生错误: {str(e)}")
@@ -245,6 +294,7 @@ class FuturesTradeManager:
             finally:
                 if self.ws_client:
                     self.ws_client.stop()
+
 
 if __name__ == "__main__":
     logging.basicConfig(
