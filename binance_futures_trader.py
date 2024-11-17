@@ -163,15 +163,17 @@ class USDTFuturesTraderManager:
         try:
             position = self.active_positions[symbol]
 
-            self.rest_client.cancel_all_orders(symbol=symbol)
+            self.rest_client.cancel_open_orders(symbol=symbol)
+            logging.debug("创建新止损前")
             response = self.rest_client.new_order(
                 symbol=symbol,
-                side="SELL" if position['position_amt'] > 0 else "BUY",
+                side="SELL" if position['amount'] > 0 else "BUY",
                 type="STOP_MARKET",
-                stopPrice=stop_price,
-                quantity=abs(position['position_amt']),
+                stopPrice=self.round_price(stop_price, symbol),
+                quantity=abs(position['amount']),
                 timeInForce="GTC"
             )
+            logging.debug("创建新止损后")
 
             if not response:
                raise
@@ -276,7 +278,8 @@ class USDTFuturesTraderManager:
 
     def round_price(self, price: float, symbol: str) -> float:
         """按照交易对精度四舍五入价格"""
-        precision = self.get_price_precision(symbol)
+        precision = self.symbols_info[symbol]['pricePrecision']
+        logging.debug(f"{symbol} precision: {precision}")
         return round(price, precision)
 
     def get_price_precision(self, symbol: str) -> int:

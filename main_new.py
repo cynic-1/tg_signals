@@ -426,8 +426,8 @@ async def main():
                                      chat_id=TELEGRAM_CHAT_ID_SELF)
     bn_executor = TradingExecutor(api_key=config['api_key'], 
                                      api_secret=config['api_secret'], 
-                                     leverage=10, 
-                                     usdt_amount=200, 
+                                     leverage=5, 
+                                     usdt_amount=500, 
                                      tp_percent=100.0, 
                                      sl_percent=5.0,
                                      bot_token=TELEGRAM_BOT_TOKEN,
