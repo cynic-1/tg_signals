@@ -179,12 +179,12 @@ def format_performance(perf: Dict) -> str:
     return ' | '.join(perf_str)
 
 class TradingExecutor:
-    def __init__(self):
-        self.trader = USDTFuturesTrader()
-        self.leverage = 10
-        self.usdt_amount = 200
-        self.tp_percent = 100.0
-        self.sl_percent = 5.0
+    def __init__(self, api_key, api_secret, leverage, usdt_amount, tp_percent, sl_percent):
+        self.trader = USDTFuturesTrader(api_key, api_secret)
+        self.leverage = leverage
+        self.usdt_amount = usdt_amount
+        self.tp_percent = tp_percent
+        self.sl_percent = sl_percent
     
     def has_position(self, symbol: str) -> bool:
         """检查是否已有该交易对的持仓"""
@@ -413,7 +413,7 @@ def _format_token_details(token: Dict, exchange_handler: ExchangeHandler) -> Lis
     ]
 
 async def main():
-    trading_executor = TradingExecutor()
+    trading_executor = TradingExecutor(api_key=config['ct_api_key'], api_secret=config['ct_api_secret'], leverage=4, usdt_amount=500, tp_percent=100.0, sl_percent=5.0)
     auto_long = True
     auto_short = False
     

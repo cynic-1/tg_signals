@@ -5,16 +5,10 @@ from timer import PerformanceTimer
 
 
 class USDTFuturesTrader:
-    def __init__(self, config=None):
-        if config is None:
-            config = ConfigLoader.load_from_env()
-            
-        if not config or 'api_key' not in config or 'api_secret' not in config:
-            raise ValueError("未找到有效的API配置")
-
+    def __init__(self, api_key, api_secret):
         self.client = UMFutures(
-            key=config['api_key'],
-            secret=config['api_secret']
+            key=api_key,
+            secret=api_secret
         )
 
         self.performance_timer = PerformanceTimer()
