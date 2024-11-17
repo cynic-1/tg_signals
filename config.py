@@ -13,6 +13,8 @@ class ConfigLoader:
         return {
             'api_key': os.getenv('BINANCE_API_KEY'),
             'api_secret': os.getenv('BINANCE_API_SECRET'),
+            'ct_api_key': os.getenv('COPY_TRADE_API_KEY'),
+            'ct_api_secret': os.getenv('COPY_TRADE_API_SECRET'),
             'TELEGRAM_BOT_TOKEN': os.getenv('TELEGRAM_BOT_TOKEN'),
             'TELEGRAM_CHAT_ID': os.getenv('TELEGRAM_CHAT_ID'),
             'TELEGRAM_CHAT_ID_SELF': os.getenv('TELEGRAM_CHAT_ID_SELF')

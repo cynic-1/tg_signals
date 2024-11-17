@@ -2,4 +2,4 @@
 venv/
 pairs.py
 *.log
-__pycache__/config.cpython-310.pyc
+__pycache__/*

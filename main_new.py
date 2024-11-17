@@ -12,7 +12,7 @@ from binance_futures_trader import USDTFuturesTraderManager
 
 # 在程序开始处添加日志配置
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -20,7 +20,6 @@ logging.basicConfig(
 config = ConfigLoader.load_from_env()
 TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = config['TELEGRAM_CHAT_ID']
-TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
 
 async def send_telegram_message(message: str):
     """发送消息到Telegram"""
@@ -179,8 +178,8 @@ def format_performance(perf: Dict) -> str:
     return ' | '.join(perf_str)
 
 class TradingExecutor:
-    def __init__(self, api_key, api_secret, leverage, usdt_amount, tp_percent, sl_percent):
-        self.trader = USDTFuturesTraderManager(api_key, api_secret, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID_SELF)
+    def __init__(self, api_key, api_secret, leverage, usdt_amount, tp_percent, sl_percent, bot_token, chat_id):
+        self.trader = USDTFuturesTraderManager(api_key, api_secret, bot_token, chat_id)
         self.leverage = leverage
         self.usdt_amount = usdt_amount
         self.tp_percent = tp_percent
@@ -239,10 +238,8 @@ class TradingExecutor:
             positions_info = self.get_positions_info()
             full_message = f"{message}\n\n📊 当前持仓信息:\n{positions_info}"
             
-            await self.bot.send_message(
-                chat_id=TELEGRAM_CHAT_ID_SELF,
-                text=full_message,
-                parse_mode='HTML'
+            await self.trader.send_telegram_message(
+                message=full_message,
             )
             logging.info(f"已发送Telegram消息: {full_message}")
         except Exception as e:
@@ -413,20 +410,38 @@ def _format_token_details(token: Dict, exchange_handler: ExchangeHandler) -> Lis
     ]
 
 async def main():
+    # 从.env加载配置
+    config = ConfigLoader.load_from_env()
+    TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
+    TELEGRAM_CHAT_ID = config['TELEGRAM_CHAT_ID']
+    TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
+
     trading_executor = TradingExecutor(api_key=config['ct_api_key'], 
                                      api_secret=config['ct_api_secret'], 
                                      leverage=4, 
                                      usdt_amount=500, 
                                      tp_percent=100.0, 
-                                     sl_percent=5.0)
-    
+                                     sl_percent=5.0,
+                                     bot_token=TELEGRAM_BOT_TOKEN,
+                                     chat_id=TELEGRAM_CHAT_ID_SELF)
+    bn_executor = TradingExecutor(api_key=config['api_key'], 
+                                     api_secret=config['api_secret'], 
+                                     leverage=10, 
+                                     usdt_amount=200, 
+                                     tp_percent=100.0, 
+                                     sl_percent=5.0,
+                                     bot_token=TELEGRAM_BOT_TOKEN,
+                                     chat_id=TELEGRAM_CHAT_ID_SELF)
     auto_long = True
     auto_short = False
     
     try:
-        trading_executor.trader.start_ws_monitor()
-        await trading_executor.trader.send_telegram_message("🤖 交易机器人启动\n监控开始！")
-        message_processor = asyncio.create_task(trading_executor.trader.process_message_queue())
+        # trading_executor.trader.start_ws_monitor()
+        bn_executor.trader.start_ws_monitor()
+        # await trading_executor.trader.send_telegram_message("🤖 交易机器人启动\n监控开始！")
+        await bn_executor.trader.send_telegram_message("🤖 交易机器人启动\n监控开始！")
+        # message_processor = asyncio.create_task(trading_executor.trader.process_message_queue())
+        message_processor_1 = asyncio.create_task(bn_executor.trader.process_message_queue())
         
         logging.info("开始监控")
         while True:
@@ -439,11 +454,13 @@ async def main():
                 # 执行交易
                 if auto_long:
                     for token in gainers:
-                        await trading_executor.execute_long(token)
+                    #    await trading_executor.execute_long(token)
+                        await bn_executor.execute_long(token)
                         
                 if auto_short:
                     for token in losers:
-                        await trading_executor.execute_short(token)
+                    #     await trading_executor.execute_short(token)
+                        await bn_executor.execute_short(token)
 
                 # 发送市场监控消息到群组
                 message = format_message(gainers, losers)
@@ -468,8 +485,10 @@ async def main():
         logging.error(f"程序发生错误: {e}")
         logging.exception(e)
     finally:
-        if trading_executor.trader.ws_client:
-            trading_executor.trader.ws_client.stop()
+        #if trading_executor.trader.ws_client:
+        #    trading_executor.trader.ws_client.stop()
+        if bn_executor.trader.ws_client:
+            bn_executor.trader.ws_client.stop()
 
 if __name__ == "__main__":
     # 安装必要的包
