@@ -120,6 +120,27 @@ def filter_tokens_by_conditions(data: List[Dict]) -> Tuple[List[Dict], List[Dict
     if not data:
         return [], []
 
+    def get_symbol_from_dict(token_data: dict) -> str:
+        """
+        从token数据中获取交易对符号
+        1. 优先获取 binance 的交易对
+        2. 如果没有 binance，则获取第一个可用的交易对
+        3. 移除交易对中的下划线
+        """
+        symbols = token_data.get('symbols', {})
+        
+        # 获取交易对名称（优先binance，否则第一个）
+        if not symbols:
+            return ""
+            
+        symbol = (
+            symbols.get('binance') or  # 尝试获取 binance 的交易对
+            next(iter(symbols.values()))  # 如果没有 binance，获取第一个交易对
+        )
+        
+        # 移除下划线
+        return symbol.replace('_', '').replace('USDT', '')
+
     # 创建筛选器实例
     token_filter = TokenFilter()
 
@@ -128,7 +149,7 @@ def filter_tokens_by_conditions(data: List[Dict]) -> Tuple[List[Dict], List[Dict
         if token_filter.apply_filters(token):
             token_info = {
                 'name': token['name'],
-                'symbol': token['symbol'],
+                'symbol': get_symbol_from_dict(token_data=token),
                 'rank': token['rank'],
                 'price': token['price'],
                 'marketcap': "{:,}".format(token['marketcap']),
