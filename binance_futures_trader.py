@@ -9,8 +9,11 @@ from binance.um_futures import UMFutures
 from binance.websocket.um_futures.websocket_client import UMFuturesWebsocketClient
 from config import ConfigLoader
 from timer import PerformanceTimer
+from message_formatter import MessageFormatter
+import time
+from threading import Thread
 
-class USDTFuturesTraderManager:
+class BinanceUSDTFuturesTraderManager:
     def __init__(self, api_key, api_secret, bot_token, chat_id):
         self.rest_client = UMFutures(key=api_key, secret=api_secret)
         self.ws_client = None
@@ -23,7 +26,44 @@ class USDTFuturesTraderManager:
         # 初始化时获取所有交易对信息并存储
         self.symbols_info = {}
         self._init_symbols_info()
+        self._start_ws_monitor()
+        self.message_queue.put("Binance 账户开始监控！")
+        self.ws_monitor_thread = Thread(target=self._monitor_ws_connection, daemon=True)
+        self.ws_monitor_thread.start()
+        self.last_heartbeat = time.time()
+        self.heartbeat_interval = 30  # 30秒
+        self.setup_logging()
     
+    def has_position(self, symbol: str):
+        logging.info(f"enter has_position({symbol})")
+        logging.info(self.active_positions)
+        position = self.active_positions.get(symbol)
+        logging.info(f"position: {position}")
+        return position and float(position.get('amount', 0)) != 0
+
+    def has_trade_pair(self, symbol: str):
+        return symbol in self.symbols_info
+        
+    def new_order(self, leverage: int, symbol: str, usdt_amount: float, 
+                                tp_percent: float = None, sl_percent: float = None, long: bool = True):
+        self.set_leverage(symbol=symbol, leverage=leverage)
+
+        try: 
+            # 执行开仓
+            response = self.market_open_long_with_tp_sl(
+                symbol=symbol,
+                usdt_amount=usdt_amount,
+                tp_percent=tp_percent,
+                sl_percent=sl_percent
+            )
+            
+            if response:
+                logging.info(f"做多开仓成功: {response}")
+        
+        except Exception as e:
+            logging.error(f"Binance 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
+            raise e
+        
     def _init_symbols_info(self):
         """初始化所有交易对信息"""
         try:
@@ -37,18 +77,106 @@ class USDTFuturesTraderManager:
             logging.error(f"初始化交易对信息失败: {e}")
             raise
 
-    def start_ws_monitor(self):
+    def setup_logging(self):
+        """设置日志"""
+        self.logger = logging.getLogger('WSManager')
+        self.logger.setLevel(logging.DEBUG)
+        
+        # 文件处理器
+        fh = logging.FileHandler('websocket_manager.log')
+        fh.setLevel(logging.DEBUG)
+        
+        # 格式化器
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(name)s] - %(message)s')
+        fh.setFormatter(formatter)
+        
+        self.logger.addHandler(fh)
+
+    def check_heartbeat(self):
+        """检查心跳"""
+        if time.time() - self.last_heartbeat > self.heartbeat_interval:
+            self.logger.warning("心跳超时，可能断连")
+            self.is_ws_connected = False
+            return False
+        return True
+
+    def _start_ws_monitor(self):
         """启动WebSocket监控"""
-        self.ws_client = UMFuturesWebsocketClient(
-            on_message=self.handle_ws_message,
-            is_combined=True
-        )
-        # 订阅账户更新
-        listen_key = self.rest_client.new_listen_key()['listenKey']
-        self.ws_client.user_data(listen_key=listen_key)
-        # 初始化持仓和订阅
-        self.active_positions = self.get_active_positions()
-        self.update_price_subscriptions()
+        try:
+            if self.ws_client:
+                self.ws_client.stop()  # 确保旧的连接被关闭
+                
+            self.ws_client = UMFuturesWebsocketClient(
+                on_message=self.handle_ws_message,
+                is_combined=True
+            )
+            
+            # 获取并订阅listen key
+            listen_key = self.rest_client.new_listen_key()['listenKey']
+            self.ws_client.user_data(listen_key=listen_key)
+            
+            self.is_ws_connected = True
+            self.ws_reconnect_count = 0
+            logging.info("WebSocket连接成功建立")
+
+            # 初始化持仓和订阅
+            self.active_positions = self.get_active_positions()
+            # self.update_price_subscriptions()
+            
+        except Exception as e:
+            logging.error(f"WebSocket启动错误: {e}")
+            self.is_ws_connected = False
+            self._handle_ws_disconnection()
+            
+    def _handle_ws_disconnection(self):
+        """处理WebSocket断开连接"""
+        if self.ws_reconnect_count >= self.MAX_RECONNECT_ATTEMPTS:
+            logging.error("达到最大重连次数，停止重连")
+            return False
+            
+        delay = min(2 ** self.ws_reconnect_count, 300)  # 指数退避，最大延迟5分钟
+        logging.info(f"等待 {delay} 秒后尝试重连...")
+        time.sleep(delay)
+        
+        self.ws_reconnect_count += 1
+        logging.info(f"尝试第 {self.ws_reconnect_count} 次重连")
+        
+        try:
+            self._start_ws_monitor()
+            return True
+        except Exception as e:
+            logging.error(f"重连失败: {e}")
+            return False
+
+    def _monitor_ws_connection(self):
+        disconnect_time = None
+        
+        while True:
+            if not self.check_heartbeat() or not self.is_ws_connected:
+                if disconnect_time is None:
+                    disconnect_time = time.time()
+                    self.logger.warning("检测到WebSocket断开")
+                    self.notify_disconnect()  # 发送断连通知
+                
+                if self._handle_ws_disconnection():
+                    self.logger.info("重连成功")
+                    self.notify_reconnect()  # 发送重连成功通知
+                    disconnect_time = None
+                
+            else:
+                disconnect_time = None
+            
+            time.sleep(10)  # 每10秒检查一次
+
+    def notify_disconnect(self):
+            """发送断连通知"""
+            message = f"⚠️ WebSocket连接断开\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+            self.message_queue.put(message)
+
+    def notify_reconnect(self):
+            """发送重连成功通知"""
+            message = f"✅ WebSocket重连成功\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+            self.message_queue.put(message)
 
     def update_price_subscriptions(self):
         """更新价格订阅"""
@@ -73,6 +201,8 @@ class USDTFuturesTraderManager:
     def handle_ws_message(self, _, message):
         """处理WebSocket消息"""
         try:
+            self.last_heartbeat = time.time() 
+            self.is_ws_connected = True  # 收到消息说明连接正常
             if isinstance(message, str):
                 message = json.loads(message)
             
@@ -88,40 +218,25 @@ class USDTFuturesTraderManager:
         except Exception as e:
             logging.error(f"处理WebSocket消息失败: {e}")
 
+    def _keep_listen_key_alive(self):
+        """保持listen key活跃"""
+        while True:
+            try:
+                self.rest_client.new_listen_key()  # 续期listen key
+                time.sleep(1800)  # 每30分钟续期一次
+            except Exception as e:
+                logging.error(f"续期listen key失败: {e}")
+                self.is_ws_connected = False
+                time.sleep(60)  # 失败后等待1分钟再试
+
     def handle_account_update(self, message):
         """处理账户更新消息"""
         logging.debug("处理账户更新")
         try:
-            update_data = message['a']
-            position_updates = []
-            
-            # 处理持仓更新
-            if 'P' in update_data:
-                for position in update_data['P']:
-                    symbol = position['s']
-                    amount = Decimal(position['pa'])
-                    entry_price = Decimal(position['ep'])
-                    
-                    position_info = {
-                        'symbol': symbol,
-                        'amount': amount,
-                        'entry_price': entry_price
-                    }
-                    position_updates.append(position_info)
-                position_updates.append(self.format_position_risk(self.get_all_positions))
-            
-            # 格式化更新信息并发送到Telegram
-            if position_updates:
-                update_message = "🎯 成交:\n\n"
-                for pos in position_updates:
-                    update_message += (
-                        f"交易对: {pos['symbol']}\n"
-                        f"持仓量: {pos['amount']}\n"
-                        f"入场价: {pos['entry_price']}\n"
-                        f"---------------\n"
-                    )
-                self.message_queue.put(update_message)
-                
+            update_message = MessageFormatter.format_account_update(message)
+            self.message_queue.put(update_message)
+            self.active_positions = self.get_active_positions()
+            # self.update_price_subscriptions()
         except Exception as e:
             logging.error(f"处理账户更新失败: {e}")
 
@@ -339,14 +454,13 @@ class USDTFuturesTraderManager:
                     sl_params = {
                         'symbol': symbol,
                         'side': 'SELL',
-                        'type': 'STOP_MARKET',
+                        'type': 'TRAILING_STOP_MARKET',
                         'quantity': quantity,
-                        'stopPrice': sl_price,
-                        'workingType': 'MARK_PRICE',
+                        'callbackRate': 5,
                         'reduceOnly': True
                     }
                     sl_response = self.rest_client.new_order(**sl_params)
-                    logging.info(f"止损订单响应: {sl_response}")
+                    logging.info(f"追踪止损订单响应: {sl_response}")
                 
                 return {
                     'open_order': response,
@@ -499,7 +613,6 @@ class USDTFuturesTraderManager:
         
         return header + "\n".join(formatted_positions) + footer
 
-
     def get_active_positions(self) -> Dict[str, Dict]:
         """获取所有活跃持仓"""
         try:
@@ -545,36 +658,41 @@ class USDTFuturesTraderManager:
                 text=message,
                 parse_mode='HTML'
             )
+            await bot.send_message(
+                chat_id=644902470,
+                text=message,
+                parse_mode='HTML'
+            )
         except Exception as e:
             logging.error(f"发送Telegram消息失败: {e}")
 
-async def main():
-    try:
-        # 从配置获取API密钥
-        config = ConfigLoader()
-        api_key = config.get('binance_api_key')
-        api_secret = config.get('binance_api_secret')
+# # 在程序开始处添加日志配置
+# logging.basicConfig(
+    # level=logging.DEBUG,
+    # format='%(asctime)s - %(levelname)s - %(message)s'
+# )
+# config = ConfigLoader.load_from_env()
+# TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
+# TELEGRAM_CHAT_ID = config['TELEGRAM_CHAT_ID']
+# TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
 
-        # 初始化交易器
-        trader = USDTFuturesTraderManager(api_key, api_secret)
-        
-        # 启动WebSocket监控
-        trader.start_ws_monitor()
-        
-        # 发送启动消息
-        await trader.send_telegram_message("🤖 交易机器人启动\n监控开始！")
-        
-        # 启动消息处理任务
-        message_processor = asyncio.create_task(trader.process_message_queue())
-        
-        # 保持程序运行
-        await asyncio.gather(message_processor)
-        
-    except KeyboardInterrupt:
-        logging.info("程序已手动停止")
-    except Exception as e:
-        logging.error(f"程序发生错误: {e}")
-        logging.exception(e)
-    finally:
-        if trader.ws_client:
-            trader.ws_client.stop()
+
+# trader = BinanceUSDTFuturesTraderManager(
+    # api_key=config['api_key'],
+    # api_secret=config['api_secret'],
+    # bot_token=TELEGRAM_BOT_TOKEN,
+    # chat_id=TELEGRAM_CHAT_ID_SELF
+# )
+# symbol = "ACTUSDT"
+# while (1):
+    # if trader.has_position("ACTUSDT"):
+        # logging.info("有持仓")
+    # else:
+        # logging.info("没持仓")
+        # trader.market_open_long_with_tp_sl(
+            # symbol=symbol, 
+            # usdt_amount=100,
+            # tp_percent=50,
+            # sl_percent=5
+            # )
+    # time.sleep(1)

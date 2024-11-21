@@ -3,3 +3,5 @@ venv/
 pairs.py
 *.log
 __pycache__/*
+__pycache__/*.pyc
+__pycache__/bn.cpython-310.pyc
