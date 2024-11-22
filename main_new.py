@@ -13,6 +13,7 @@ from bybit_futures_trader import BybitUSDTFuturesTraderManager
 import pandas as pd
 from pathlib import Path
 from threading import Thread
+from signal_tracker import SignalTracker
 
 # 在程序开始处添加日志配置
 logging.basicConfig(
@@ -157,7 +158,7 @@ class TokenFilter:
             )
             
             # 移除下划线
-            return symbol.replace('_', '').replace('USDT', '').replace('-', '')
+            return symbol.replace('_', '').replace('USDT', '').replace('-', '').replace('/', '')
 
 
         for token in data:
@@ -480,6 +481,7 @@ async def main():
 
     auto_long = True
     auto_short = False
+    signal_tracker = SignalTracker(expiry_minutes=30)  # 创建信号追踪器
     
     try:
         message_processor = asyncio.create_task(trading_executor.binance_trader.process_message_queue())
@@ -502,12 +504,28 @@ async def main():
                 # 执行交易
                 if auto_long:
                     for token in gainers:
+                        symbol = token['symbol']
+                        if signal_tracker.has_recent_signal(symbol):
+                            logging.info(f"跳过 {symbol} - 30分钟内有信号")
+                            continue
+
+                        if token['performance']['min1'] > 5 or token['performance']['min5'] > 15:
+                            signal_tracker.add_signal(symbol=symbol)
+                            continue
+
                         await trading_executor.execute_long(token)
-                        
+                        signal_tracker.add_signal(symbol=symbol)
+
                 # False by default
                 if auto_short:
                     for token in losers:
+                        symbol = token['symbol']
+                        if signal_tracker.has_recent_signal(symbol):
+                            logging.info(f"跳过 {symbol} - 30分钟内已有信号")
+                            continue
+                            
                         await trading_executor.execute_short(token)
+                        signal_tracker.add_signal(symbol)
 
                 # 发送市场监控消息到群组
                 message = format_message(gainers, losers)

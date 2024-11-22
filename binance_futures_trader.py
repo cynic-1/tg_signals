@@ -2,7 +2,7 @@ import logging
 import json
 import queue
 import asyncio
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ConversionSyntax
 from typing import Dict, Set
 import telegram
 from binance.um_futures import UMFutures
@@ -242,13 +242,27 @@ class BinanceUSDTFuturesTraderManager:
 
     def handle_price_update(self, data):
         """处理价格更新,更新止损"""
+        def safe_decimal_convert(value, default=None):
+            """安全地将值转换为Decimal"""
+            try:
+                if value is None:
+                    return default
+                return Decimal(str(value).strip())
+            except (InvalidOperation, ConversionSyntax) as e:
+                logging.error(f"Decimal转换失败 - 值: {value}, 错误: {e}")
+                return default
         try:
             symbol = data['s']
-            current_price = Decimal(data['p'])
-            
+            current_price = safe_decimal_convert(data['p'])
+            if current_price is None:
+                return
+
             if symbol in self.active_positions:
                 position = self.active_positions[symbol]
-                entry_price = position['entry_price']
+                entry_price = safe_decimal_convert(position['entry_price'])
+                if entry_price is None:
+                    return
+
                 current_stop_loss = position['current_stop_loss']
                 
                 # 计算价格变化百分比
