@@ -16,15 +16,31 @@ class TokenFilter:
         self.signal_tracker = SignalTracker(expiry_minutes=30)
 
     def _load_token_tags(self) -> Dict[str, str]:
-        """从CSV文件加载token tags"""
+        """
+        从CSV文件加载token的tags
+        
+        Returns:
+            Dict[str, str]: token symbol到tags的映射
+        """
         try:
+            # 获取项目根目录
             project_root = Path(__file__).parent.parent
             csv_path = project_root / 'data' / 'crypto_data.csv'
+            
+            # 读取CSV文件
             df = pd.read_csv(csv_path)
-            return dict(zip(df['symbol'], df['Tags']))
+            
+            # 确保Tags列中的NaN值被替换为空字符串
+            df['Tags'] = df['Tags'].fillna('').astype(str)
+            
+            # 创建symbol到tags的映射
+            tags_dict = dict(zip(df['symbol'], df['Tags']))
+            self.logger.info(f"Successfully loaded {len(tags_dict)} token tags")
+            return tags_dict
+            
         except Exception as e:
-            logging.error(f"Error loading tags: {e}")
-            return {}
+            self.logger.error(f"Error loading token tags: {e}")
+            return {} 
             
     def check_exchange_requirement(self, token: Dict) -> bool:
         """检查交易所要求"""

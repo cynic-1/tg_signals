@@ -75,17 +75,31 @@ class MessageFormatter:
         return '\n'.join(message)
     
     def _format_token_details(self, token: Dict) -> List[str]:
-        """格式化单个代币详细信息"""
+        """
+        格式化单个代币详细信息
+        
+        Args:
+            token: 代币信息
+            
+        Returns:
+            List[str]: 格式化后的详细信息列表
+        """
         exchanges = token.get('exchanges', [])
         sorted_exchanges = self.exchange_handler.sort_exchanges(exchanges)
         
+        # 处理标签
         tags = token.get('tags', '')
-        if tags:
-            # 分割标签并添加#号
-            tag_list = [f"#{tag.strip()}" for tag in tags.split(',') if tag.strip()]
-            tags_display = f'<b>标签:</b> {" ".join(tag_list)}'
-        else:
-            tags_display = ''
+        tags_display = ''
+        
+        # 确保tags是字符串类型且不是空值
+        if isinstance(tags, str) and tags.strip():
+            try:
+                # 分割标签并添加#号
+                tag_list = [f"#{tag.strip()}" for tag in tags.split(',') if tag.strip()]
+                if tag_list:
+                    tags_display = f'<b>标签:</b> {" ".join(tag_list)}'
+            except Exception as e:
+                self.logger.error(f"处理标签时出错: {e}, tags: {tags}")
         
         details = [
             f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
