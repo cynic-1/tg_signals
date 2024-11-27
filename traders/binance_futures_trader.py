@@ -33,7 +33,6 @@ class BinanceUSDTFuturesTraderManager:
         self.ws_monitor_thread.start()
         self.last_heartbeat = time.time()
         self.heartbeat_interval = 30  # 30秒
-        self.setup_self.logger()
     
     def has_position(self, symbol: str):
         self.logger.info(f"enter has_position({symbol})")
