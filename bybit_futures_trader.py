@@ -29,7 +29,6 @@ class BybitUSDTFuturesTraderManager:
         self.symbols_info = {}
         self._init_symbols_info()
         self._start_ws_monitor()
-        self.message_queue.put("Bybit 账户开始监控！")
     
     def has_position(self, symbol: str):
         position = self.active_positions.get(symbol)
@@ -45,7 +44,7 @@ class BybitUSDTFuturesTraderManager:
 
         try: 
             # 执行开仓
-            response = self.market_open_long_with_tp_sl(
+            response = self.limit_open_long_with_tp_sl(
                 symbol=symbol,
                 usdt_amount=usdt_amount,
                 tp_percent=tp_percent,
@@ -56,7 +55,7 @@ class BybitUSDTFuturesTraderManager:
                 logging.info(f"做多开仓成功: {response}")
         
         except Exception as e:
-            logging.error(f"Binance 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
+            logging.error(f"Bybit 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
             raise e
 
     def _init_symbols_info(self):
@@ -308,7 +307,7 @@ class BybitUSDTFuturesTraderManager:
             logging.error(f"获取价格失败: {e}")
             raise
 
-    def calculate_quantity(self, symbol: str, usdt_amount: float) -> float:
+    def calculate_quantity(self, symbol: str, usdt_amount: float, price: float) -> float:
         """计算下单数量"""
         def get_precision_from_step(step_size: str) -> int:
                 """
@@ -330,7 +329,6 @@ class BybitUSDTFuturesTraderManager:
             quantity_precision = get_precision_from_step(qty_step)
             min_qty = float(symbol_info['lotSizeFilter']['minOrderQty']) 
             
-            price = self.get_symbol_price(symbol)
             quantity = round(usdt_amount / price, quantity_precision)
             
             if quantity < min_qty:
@@ -384,18 +382,62 @@ class BybitUSDTFuturesTraderManager:
         except Exception as e:
             logging.error(f"处理价格时出错: {e}")
             raise
+    
+    def limit_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
+                                    tp_percent: float = None, sl_percent: float = None):
+                """限价开多并设置止盈止损"""
+                try:
+                    current_price = self.get_symbol_price(symbol)
+                    price = self.round_price(symbol=symbol, price=(current_price*0.97))
+                    logging.info(f"当前市价: {current_price}")
+                    
+                    quantity = self.calculate_quantity(symbol, usdt_amount, price=price)
+                    logging.info(f"下单数量: {quantity}")
+
+                    sl_price = self.round_price(current_price * (1 - 5/100), symbol)
+                    if sl_percent:
+                        sl_price = self.round_price(current_price * (1 - sl_percent/100), symbol)
+                        
+                    # 4. 执行市价开多订单
+                    open_params = {
+                        'category': 'linear',
+                        'symbol': symbol,
+                        'isLeverage': 1,
+                        'side': 'Buy',
+                        'orderType': 'LIMIT',
+                        'price': price,
+                        'qty': quantity,
+                        'stopLoss': sl_price 
+                    }
+                    
+                    response = self.rest_client.place_order(**open_params)
+                    logging.info(f"开仓订单响应: {response}")
+                    
+                    return {
+                        'open_order': response,
+                    }
+                    
+                except Exception as e:
+                    logging.error(f"开仓设置止盈止损失败: {e}")
+                    # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
+                    try:
+                        self.close_position(symbol)
+                        logging.info("已关闭仓位")
+                    except:
+                        logging.error("关闭仓位失败，请手动处理")
+                    raise
 
     def market_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
                                 tp_percent: float = None, sl_percent: float = None):
             """市价开多并设置止盈止损"""
             try:
-                # 2. 计算下单数量
-                quantity = self.calculate_quantity(symbol, usdt_amount)
-                logging.info(f"下单数量: {quantity}")
-                
                 # 3. 获取当前市价
                 current_price = self.get_symbol_price(symbol)
+                price = self.round_price(symbol=symbol, price=(current_price*0.97))
                 logging.info(f"当前市价: {current_price}")
+                
+                quantity = self.calculate_quantity(symbol, usdt_amount, price=price)
+                logging.info(f"下单数量: {quantity}")
                 
 
                 sl_price = self.round_price(current_price * (1 - 5/100), symbol)
@@ -508,32 +550,32 @@ async def main():
             )
         
         # 启动WebSocket监控
-        trader.start_ws_monitor()
+        # trader.start_ws_monitor()
         
         # 发送启动消息
-        await trader.send_telegram_message("🤖 Bybit 交易机器人启动\n监控开始！")
+        # await trader.send_telegram_message("🤖 Bybit 交易机器人启动\n监控开始！")
         
-#         trader.set_leverage(symbol='BTCUSDT', leverage=5)
-        # trader.market_open_long_with_tp_sl(
-            # symbol='BTCUSDT', 
-            # usdt_amount=100,
-            # tp_percent=100.0,
-            # sl_percent=5.0
-            # )
+        trader.set_leverage(symbol='RIFSOLUSDT', leverage=5)
+        trader.limit_open_long_with_tp_sl(
+            symbol='RIFSOLUSDT', 
+            usdt_amount=100,
+            tp_percent=100.0,
+            sl_percent=5.0
+            )
         # 启动消息处理任务
-        message_processor = asyncio.create_task(trader.process_message_queue())
+        # message_processor = asyncio.create_task(trader.process_message_queue())
         
         # 保持程序运行
-        await asyncio.gather(message_processor)
+        # await asyncio.gather(message_processor)
         
     except KeyboardInterrupt:
         logging.info("程序已手动停止")
     except Exception as e:
         logging.error(f"程序发生错误: {e}")
         logging.exception(e)
-    finally:
-        if trader.ws_client:
-            trader.ws_client.stop()
+    # finally:
+        # if trader.ws_client:
+            # trader.ws_client.stop()
 
 
 if __name__ == "__main__":

@@ -27,7 +27,6 @@ class BinanceUSDTFuturesTraderManager:
         self.symbols_info = {}
         self._init_symbols_info()
         self._start_ws_monitor()
-        self.message_queue.put("Binance 账户开始监控！")
         self.ws_monitor_thread = Thread(target=self._monitor_ws_connection, daemon=True)
         self.ws_monitor_thread.start()
         self.last_heartbeat = time.time()
@@ -50,7 +49,7 @@ class BinanceUSDTFuturesTraderManager:
 
         try: 
             # 执行开仓
-            response = self.market_open_long_with_tp_sl(
+            response = self.limit_open_long_with_tp_sl(
                 symbol=symbol,
                 usdt_amount=usdt_amount,
                 tp_percent=tp_percent,
@@ -340,7 +339,7 @@ class BinanceUSDTFuturesTraderManager:
             logging.error(f"获取价格失败: {e}")
             raise
 
-    def calculate_quantity(self, symbol: str, usdt_amount: float) -> float:
+    def calculate_quantity(self, symbol: str, usdt_amount: float, price: float) -> float:
         """计算下单数量"""
         try:
             symbol_info = self.get_symbol_info(symbol)
@@ -357,7 +356,6 @@ class BinanceUSDTFuturesTraderManager:
                 0
             ))
             
-            price = self.get_symbol_price(symbol)
             quantity = round(usdt_amount / price, quantity_precision)
             
             if quantity < min_qty:
@@ -406,10 +404,34 @@ class BinanceUSDTFuturesTraderManager:
             raise
 
     def round_price(self, price: float, symbol: str) -> float:
-        """按照交易对精度四舍五入价格"""
-        precision = self.symbols_info[symbol]['pricePrecision']
-        logging.debug(f"{symbol} precision: {precision}")
-        return round(price, precision)
+            """按照交易对精度四舍五入价格"""
+            try:
+                logging.debug(self.symbols_info[symbol])
+                pf = next(filter for filter in self.symbols_info[symbol]['filters'] if filter['filterType'] == 'PRICE_FILTER')
+                min_price = float(pf['minPrice'])
+                max_price = float(pf['maxPrice'])
+                tick_size= float(pf['tickSize'])
+                # 计算小数位数
+                decimal_places = len(str(tick_size).split('.')[-1])
+                # 检查价格范围
+                if price < min_price:
+                    raise ValueError(f"价格 {price} 小于最小价格 {min_price}")
+                if price > max_price:
+                    raise ValueError(f"价格 {price} 大于最大价格 {max_price}")
+                    
+                # 根据 tick_size 四舍五入
+                rounded_price = round(price / tick_size) * tick_size
+                
+                # 使用格式化字符串确保精确的小数位数
+                rounded_price = float(f"%.{decimal_places}f" % rounded_price)
+                
+                # 确保结果仍在范围内
+                rounded_price = max(min_price, min(rounded_price, max_price))   
+                return rounded_price
+
+            except Exception as e:
+                logging.error(f"处理价格时出错: {e}")
+            raise
 
     def get_price_precision(self, symbol: str) -> int:
         """获取价格精度"""
@@ -422,6 +444,95 @@ class BinanceUSDTFuturesTraderManager:
             logging.error(f"获取价格精度失败: {e}")
             raise
 
+    def limit_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
+                                tp_percent: float = None, sl_percent: float = None):
+            """市价开多并设置止盈止损"""
+            try:
+                
+                # 3. 获取当前市价
+                current_price = self.get_symbol_price(symbol)
+                
+                price = self.round_price(current_price * 0.97, symbol)
+
+                logging.info(f"当前市价: {current_price}, 下单价格: {price}")
+
+                quantity = self.calculate_quantity(symbol, usdt_amount, price=price)
+                logging.info(f"下单数量: {quantity}")
+                
+                # 4. 执行市价开多订单
+                open_params = {
+                    'symbol': symbol,
+                    'side': 'BUY',
+                    'type': 'LIMIT',
+                    'price': price,
+                    'quantity': quantity,
+                    'timeInForce': 'GTC',
+                }
+                
+                response = self.rest_client.new_order(**open_params)
+                logging.info(f"开仓订单响应: {response}")
+                
+                # 5. 设置止盈单
+                if tp_percent:
+                    tp_price = self.round_price(current_price * (1 + tp_percent/100), symbol)
+                    logging.info(f"止盈价格: {tp_price}")
+                    tp_params = {
+                        'symbol': symbol,
+                        'side': 'SELL',
+                        'type': 'TAKE_PROFIT_MARKET',
+                        'quantity': quantity,
+                        'stopPrice': tp_price,
+                        'workingType': 'MARK_PRICE',
+                        'reduceOnly': True
+                    }
+                    tp_response = self.rest_client.new_order(**tp_params)
+                    logging.info(f"止盈订单响应: {tp_response}")
+
+                # 6. 设置止损单
+                if sl_percent:
+                    sl_price = self.round_price(current_price * (1 - sl_percent/100), symbol)
+                    logging.info(f"止损价格: {sl_price}")
+                    sl_params = {
+                        'symbol': symbol,
+                        'side': 'SELL',
+                        'type': 'STOP_MARKET',
+                        'quantity': quantity,
+                        'stopPrice': sl_price,
+                        'workingType': 'MARK_PRICE',
+                        'reduceOnly': True
+                    }
+                    sl_response = self.rest_client.new_order(**sl_params)
+                    logging.info(f"止损订单响应: {sl_response}")
+
+                # 7. 设置追踪止损单
+                if sl_percent:
+                    sl_params = {
+                        'symbol': symbol,
+                        'side': 'SELL',
+                        'type': 'TRAILING_STOP_MARKET',
+                        'quantity': quantity,
+                        'callbackRate': 5,
+                        'reduceOnly': True
+                    }
+                    sl_response = self.rest_client.new_order(**sl_params)
+                    logging.info(f"追踪止损订单响应: {sl_response}")
+                
+                return {
+                    'open_order': response,
+                    'tp_order': tp_response if tp_percent else None,
+                    'sl_order': sl_response if sl_percent else None
+                }
+                
+            except Exception as e:
+                logging.error(f"开仓设置止盈止损失败: {e}")
+                # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
+                try:
+                    self.close_position(symbol)
+                    logging.info("已关闭仓位")
+                except:
+                    logging.error("关闭仓位失败，请手动处理")
+                raise
+    
     def market_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
                                 tp_percent: float = None, sl_percent: float = None):
             """市价开多并设置止盈止损"""
@@ -680,7 +791,7 @@ class BinanceUSDTFuturesTraderManager:
         except Exception as e:
             logging.error(f"发送Telegram消息失败: {e}")
 
-# # 在程序开始处添加日志配置
+# 在程序开始处添加日志配置
 # logging.basicConfig(
     # level=logging.DEBUG,
     # format='%(asctime)s - %(levelname)s - %(message)s'
@@ -703,10 +814,10 @@ class BinanceUSDTFuturesTraderManager:
         # logging.info("有持仓")
     # else:
         # logging.info("没持仓")
-        # trader.market_open_long_with_tp_sl(
+        # trader.limit_open_long_with_tp_sl(
             # symbol=symbol, 
             # usdt_amount=100,
             # tp_percent=50,
-            # sl_percent=5
+            # sl_percent=3
             # )
-    # time.sleep(1)
+    # time.sleep(10)

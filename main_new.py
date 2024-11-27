@@ -95,7 +95,7 @@ class ExchangeHandler:
 class TokenFilter:
     def __init__(self):
         # 定义主流交易所列表
-        self.major_exchanges = {'bybit', 'binance', 'okx', 'bitget'}
+        self.major_exchanges = {'bybit', 'binance', 'okx'}
         # 最小价格变化阈值
         self.change_threshold_5min = 5
         self.change_threshold_1min = 2
@@ -130,7 +130,6 @@ class TokenFilter:
 
         return all(f(token) for f in filters)
 
-
     def filter_tokens_by_conditions(self, data: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
         """主筛选函数"""
         gainers = []
@@ -160,7 +159,6 @@ class TokenFilter:
             # 移除下划线
             return symbol.replace('_', '').replace('USDT', '').replace('-', '').replace('/', '')
 
-
         for token in data:
             # 应用所有筛选条件
             if self.apply_filters(token):
@@ -175,7 +173,6 @@ class TokenFilter:
                     'exchanges': list(token['symbols'].keys()) if 'symbols' in token else [],
                     'tags': self.token_tags.get(token['symbol'], '')
                 }
-
                 # 根据涨跌幅分类
                 min5_change = token['performance']['min5']
                 if min5_change > 0:
@@ -472,9 +469,9 @@ async def main():
         api_key_bb=config['bybit_api_key'],
         api_secret_bb=config['bybit_api_secret'],
         leverage=5, 
-        usdt_amount=500, 
-        tp_percent=100.0, 
-        sl_percent=3.0,
+        usdt_amount=100, 
+        tp_percent=50.0, 
+        sl_percent=10.0,
         bot_token=TELEGRAM_BOT_TOKEN,
         chat_id=TELEGRAM_CHAT_ID_SELF
         )
