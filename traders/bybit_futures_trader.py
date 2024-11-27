@@ -6,10 +6,11 @@ from decimal import Decimal
 from typing import Dict, Set
 import telegram
 from config import ConfigLoader
-from timer import PerformanceTimer
+from utils.timer import PerformanceTimer
 from pybit.unified_trading import HTTP, WebSocket
 from datetime import datetime
-from message_formatter import MessageFormatter
+from services.message_formatter import MessageFormatter
+from utils import setup_logger
 
 
 class BybitUSDTFuturesTraderManager:
@@ -25,6 +26,9 @@ class BybitUSDTFuturesTraderManager:
         self.TELEGRAM_CHAT_ID = chat_id
         self.api_key = api_key
         self.api_secret = api_secret
+
+        self.logger = setup_logger('bybit_trader')
+
         # 初始化时获取所有交易对信息并存储
         self.symbols_info = {}
         self._init_symbols_info()
@@ -52,24 +56,24 @@ class BybitUSDTFuturesTraderManager:
             )
             
             if response:
-                logging.info(f"做多开仓成功: {response}")
+                self.logger.info(f"做多开仓成功: {response}")
         
         except Exception as e:
-            logging.error(f"Bybit 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
+            self.logger.error(f"Bybit 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
             raise e
 
     def _init_symbols_info(self):
         """初始化所有交易对信息"""
         try:
             exchange_info = self.rest_client.get_instruments_info(category='linear', limit=1000)
-            logging.info(exchange_info)
+            self.logger.info(exchange_info)
             # 将交易对信息转换为字典格式，便于快速查询
             self.symbols_info = {
                 s['symbol']: s for s in exchange_info['result']['list']
             }
-            logging.info(f"已加载 {len(self.symbols_info)} 个交易对信息")
+            self.logger.info(f"已加载 {len(self.symbols_info)} 个交易对信息")
         except Exception as e:
-            logging.error(f"初始化交易对信息失败: {e}")
+            self.logger.error(f"初始化交易对信息失败: {e}")
             raise
 
     def _start_ws_monitor(self):
@@ -102,7 +106,7 @@ class BybitUSDTFuturesTraderManager:
                 self.handle_position_update(message)
                 
         except Exception as e:
-            logging.error(f"处理WebSocket消息失败: {e}")
+            self.logger.error(f"处理WebSocket消息失败: {e}")
 
     def handler_execution_update(self, message):
         update_message = MessageFormatter.format_bybit_trades(message['data'])
@@ -118,18 +122,18 @@ class BybitUSDTFuturesTraderManager:
             remove_symbols = self.monitored_symbols - current_positions
             for symbol in remove_symbols:
                 self.ws_client.unsubscribe(stream=[f"tickers.{symbol}"])
-                logging.debug(f"取消订阅：{symbol}")
+                self.logger.debug(f"取消订阅：{symbol}")
 
             # 添加新持仓的订阅
             new_symbols = current_positions - self.monitored_symbols
             if new_symbols:
                 for symbol in new_symbols:
                     self.ws_client.ticker_stream(symbol=symbol, callback=self.handle_ws_message)
-                    logging.debug(f"开始订阅：{symbol}")
+                    self.logger.debug(f"开始订阅：{symbol}")
 
             self.monitored_symbols = current_positions
         except Exception as e:
-            logging.error(f"更新价格订阅失败: {e}")
+            self.logger.error(f"更新价格订阅失败: {e}")
 
     def handle_price_update(self, message):
         """处理价格更新,更新止损"""
@@ -165,19 +169,18 @@ class BybitUSDTFuturesTraderManager:
                         self.message_queue.put(update_message)
                         
         except Exception as e:
-            logging.error(f"处理价格更新失败: {e}")
+            self.logger.error(f"处理价格更新失败: {e}")
 
 
 
     def handle_position_update(self, message):
         try:
-            logging.debug(message)
-            logging.debug(message)
             update_message = BybitUSDTFuturesTraderManager.format_positions(message['data'])
             self.message_queue.put(update_message)
             self.active_positions = self.get_active_positions()
         except Exception as e:
-            logging.error(f"处理仓位更新失败: {e}")
+            self.logger.error(f"处理仓位更新失败: {e}")
+            self.logger.error(f"Message: {message}")
         
 
     @staticmethod
@@ -271,7 +274,7 @@ class BybitUSDTFuturesTraderManager:
                raise
 
         except Exception as e:
-            logging.error(f"更新止损订单失败 {symbol}: {e}")
+            self.logger.error(f"更新止损订单失败 {symbol}: {e}")
 
 
     def calculate_new_stop_loss(self, price_change_percent: Decimal, entry_price: Decimal) -> Decimal:
@@ -281,7 +284,7 @@ class BybitUSDTFuturesTraderManager:
             stop_loss_percent = Decimal('100') + (rise_times * Decimal('5'))
             return entry_price * (stop_loss_percent / Decimal('100'))
         except Exception as e:
-            logging.error(f"计算止损价格失败: {e}")
+            self.logger.error(f"计算止损价格失败: {e}")
             return entry_price * Decimal('0.95')
 
     def get_symbol_info(self, symbol: str) -> dict:
@@ -304,7 +307,7 @@ class BybitUSDTFuturesTraderManager:
                 )
             return float(ticker['result']['list'][0][2])
         except Exception as e:
-            logging.error(f"获取价格失败: {e}")
+            self.logger.error(f"获取价格失败: {e}")
             raise
 
     def calculate_quantity(self, symbol: str, usdt_amount: float, price: float) -> float:
@@ -336,7 +339,7 @@ class BybitUSDTFuturesTraderManager:
                 
             return quantity
         except Exception as e:
-            logging.error(f"计算下单数量失败: {e}")
+            self.logger.error(f"计算下单数量失败: {e}")
             raise
 
     def set_leverage(self, symbol: str, leverage: int):
@@ -348,20 +351,20 @@ class BybitUSDTFuturesTraderManager:
                 buyLeverage=str(leverage),
                 sellLeverage=str(leverage)
             )
-            logging.info(f"设置杠杆响应: {response}")
+            self.logger.info(f"设置杠杆响应: {response}")
             return response
         except Exception as e:
             error_str = str(e)
             if "110043" in error_str:
-                logging.info(f"杠杆倍数已经是 {leverage}，无需修改")
+                self.logger.info(f"杠杆倍数已经是 {leverage}，无需修改")
                 return {"retCode": 0, "leverage": leverage}  # 返回一个模拟的成功响应
-            logging.error(f"设置杠杆失败: {e}")
+            self.logger.error(f"设置杠杆失败: {e}")
             raise
 
     def round_price(self, price: float, symbol: str) -> float:
         """按照交易对精度四舍五入价格"""
         try:
-            logging.debug(self.symbols_info[symbol])
+            self.logger.debug(self.symbols_info[symbol])
             pf = self.symbols_info[symbol]['priceFilter']
             min_price = float(pf['minPrice'])
             max_price = float(pf['maxPrice'])
@@ -380,7 +383,7 @@ class BybitUSDTFuturesTraderManager:
             rounded_price = max(min_price, min(rounded_price, max_price))   
             return rounded_price
         except Exception as e:
-            logging.error(f"处理价格时出错: {e}")
+            self.logger.error(f"处理价格时出错: {e}")
             raise
     
     def limit_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
@@ -389,10 +392,10 @@ class BybitUSDTFuturesTraderManager:
                 try:
                     current_price = self.get_symbol_price(symbol)
                     price = self.round_price(symbol=symbol, price=(current_price*0.97))
-                    logging.info(f"当前市价: {current_price}")
+                    self.logger.info(f"当前市价: {current_price}")
                     
                     quantity = self.calculate_quantity(symbol, usdt_amount, price=price)
-                    logging.info(f"下单数量: {quantity}")
+                    self.logger.info(f"下单数量: {quantity}")
 
                     sl_price = self.round_price(current_price * (1 - 5/100), symbol)
                     if sl_percent:
@@ -411,20 +414,20 @@ class BybitUSDTFuturesTraderManager:
                     }
                     
                     response = self.rest_client.place_order(**open_params)
-                    logging.info(f"开仓订单响应: {response}")
+                    self.logger.info(f"开仓订单响应: {response}")
                     
                     return {
                         'open_order': response,
                     }
                     
                 except Exception as e:
-                    logging.error(f"开仓设置止盈止损失败: {e}")
+                    self.logger.error(f"开仓设置止盈止损失败: {e}")
                     # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
                     try:
                         self.close_position(symbol)
-                        logging.info("已关闭仓位")
+                        self.logger.info("已关闭仓位")
                     except:
-                        logging.error("关闭仓位失败，请手动处理")
+                        self.logger.error("关闭仓位失败，请手动处理")
                     raise
 
     def market_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
@@ -434,10 +437,10 @@ class BybitUSDTFuturesTraderManager:
                 # 3. 获取当前市价
                 current_price = self.get_symbol_price(symbol)
                 price = self.round_price(symbol=symbol, price=(current_price*0.97))
-                logging.info(f"当前市价: {current_price}")
+                self.logger.info(f"当前市价: {current_price}")
                 
                 quantity = self.calculate_quantity(symbol, usdt_amount, price=price)
-                logging.info(f"下单数量: {quantity}")
+                self.logger.info(f"下单数量: {quantity}")
                 
 
                 sl_price = self.round_price(current_price * (1 - 5/100), symbol)
@@ -456,20 +459,20 @@ class BybitUSDTFuturesTraderManager:
                 }
                 
                 response = self.rest_client.place_order(**open_params)
-                logging.info(f"开仓订单响应: {response}")
+                self.logger.info(f"开仓订单响应: {response}")
                 
                 return {
                     'open_order': response,
                 }
                 
             except Exception as e:
-                logging.error(f"开仓设置止盈止损失败: {e}")
+                self.logger.error(f"开仓设置止盈止损失败: {e}")
                 # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
                 try:
                     self.close_position(symbol)
-                    logging.info("已关闭仓位")
+                    self.logger.info("已关闭仓位")
                 except:
-                    logging.error("关闭仓位失败，请手动处理")
+                    self.logger.error("关闭仓位失败，请手动处理")
                 raise
 
     def get_active_positions(self) -> Dict[str, Dict]:
@@ -492,7 +495,7 @@ class BybitUSDTFuturesTraderManager:
                     }
             return active_positions
         except Exception as e:
-            logging.error(f"获取活跃持仓失败: {e}")
+            self.logger.error(f"获取活跃持仓失败: {e}")
             return {}
 
     async def process_message_queue(self):
@@ -506,7 +509,7 @@ class BybitUSDTFuturesTraderManager:
             except queue.Empty:
                 pass
             except Exception as e:
-                logging.error(f"处理消息队列失败: {e}")
+                self.logger.error(f"处理消息队列失败: {e}")
             finally:
                 await asyncio.sleep(1)
 
@@ -525,62 +528,57 @@ class BybitUSDTFuturesTraderManager:
                 parse_mode='HTML'
             )
         except Exception as e:
-            logging.error(f"发送Telegram消息失败: {e}")
+            self.logger.error(f"发送Telegram消息失败: {e}")
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-
-async def main():
-    try:
-        # 从配置获取API密钥
-        config = ConfigLoader.load_from_env()
-        api_key = config['bybit_api_key']
-        api_secret = config['bybit_api_secret']
-        TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
-        TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
-        # 初始化交易器
-        trader = BybitUSDTFuturesTraderManager(
-            testnet=False,
-            api_key=api_key, 
-            api_secret=api_secret, 
-            bot_token=TELEGRAM_BOT_TOKEN,
-            chat_id=TELEGRAM_CHAT_ID_SELF
-            )
+# async def main():
+    # try:
+        # # 从配置获取API密钥
+        # config = ConfigLoader.load_from_env()
+        # api_key = config['bybit_api_key']
+        # api_secret = config['bybit_api_secret']
+        # TELEGRAM_BOT_TOKEN = config['TELEGRAM_BOT_TOKEN']
+        # TELEGRAM_CHAT_ID_SELF = config['TELEGRAM_CHAT_ID_SELF']
+        # # 初始化交易器
+        # trader = BybitUSDTFuturesTraderManager(
+            # testnet=False,
+            # api_key=api_key, 
+            # api_secret=api_secret, 
+            # bot_token=TELEGRAM_BOT_TOKEN,
+            # chat_id=TELEGRAM_CHAT_ID_SELF
+            # )
         
-        # 启动WebSocket监控
-        # trader.start_ws_monitor()
+        # # 启动WebSocket监控
+        # # trader.start_ws_monitor()
         
-        # 发送启动消息
-        # await trader.send_telegram_message("🤖 Bybit 交易机器人启动\n监控开始！")
+        # # 发送启动消息
+        # # await trader.send_telegram_message("🤖 Bybit 交易机器人启动\n监控开始！")
         
-        trader.set_leverage(symbol='RIFSOLUSDT', leverage=5)
-        trader.limit_open_long_with_tp_sl(
-            symbol='RIFSOLUSDT', 
-            usdt_amount=100,
-            tp_percent=100.0,
-            sl_percent=5.0
-            )
-        # 启动消息处理任务
-        # message_processor = asyncio.create_task(trader.process_message_queue())
+        # trader.set_leverage(symbol='RIFSOLUSDT', leverage=5)
+        # trader.limit_open_long_with_tp_sl(
+            # symbol='RIFSOLUSDT', 
+            # usdt_amount=100,
+            # tp_percent=100.0,
+            # sl_percent=5.0
+            # )
+        # # 启动消息处理任务
+        # # message_processor = asyncio.create_task(trader.process_message_queue())
         
-        # 保持程序运行
-        # await asyncio.gather(message_processor)
+        # # 保持程序运行
+        # # await asyncio.gather(message_processor)
         
-    except KeyboardInterrupt:
-        logging.info("程序已手动停止")
-    except Exception as e:
-        logging.error(f"程序发生错误: {e}")
-        logging.exception(e)
-    # finally:
-        # if trader.ws_client:
-            # trader.ws_client.stop()
+    # except KeyboardInterrupt:
+        # logging.info("程序已手动停止")
+    # except Exception as e:
+        # logging.error(f"程序发生错误: {e}")
+        # logging.exception(e)
+    # # finally:
+        # # if trader.ws_client:
+            # # trader.ws_client.stop()
 
 
-if __name__ == "__main__":
-    # 安装必要的包
-    # pip install python-telegram-bot requests
+# if __name__ == "__main__":
+    # # 安装必要的包
+    # # pip install python-telegram-bot requests
 
-    # 运行异步主函数
-    asyncio.run(main())
+    # # 运行异步主函数
+    # asyncio.run(main())

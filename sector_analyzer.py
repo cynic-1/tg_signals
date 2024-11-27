@@ -56,7 +56,7 @@ class SectorAnalyzer:
             )
             
             # 移除下划线
-            return symbol.replace('_', '').replace('USDT', '').replace('-', '').replace('/', '')
+            return symbol.replace('_', '').replace('USDT', '').replace('-', '').replace('/', '').replace('USD', '')
 
         for token in data:
             token['symbol'] = get_symbol_from_dict(token_data=token)

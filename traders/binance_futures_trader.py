@@ -1,4 +1,3 @@
-import logging
 import json
 import queue
 import asyncio
@@ -8,8 +7,8 @@ import telegram
 from binance.um_futures import UMFutures
 from binance.websocket.um_futures.websocket_client import UMFuturesWebsocketClient
 from config import ConfigLoader
-from timer import PerformanceTimer
-from message_formatter import MessageFormatter
+from utils import PerformanceTimer, setup_logger
+from services import MessageFormatter
 import time
 from threading import Thread
 
@@ -23,6 +22,9 @@ class BinanceUSDTFuturesTraderManager:
         self.performance_timer = PerformanceTimer()
         self.TELEGRAM_BOT_TOKEN = bot_token
         self.TELEGRAM_CHAT_ID = chat_id
+
+        self.logger = setup_logger('binance trader')
+
         # 初始化时获取所有交易对信息并存储
         self.symbols_info = {}
         self._init_symbols_info()
@@ -31,13 +33,13 @@ class BinanceUSDTFuturesTraderManager:
         self.ws_monitor_thread.start()
         self.last_heartbeat = time.time()
         self.heartbeat_interval = 30  # 30秒
-        self.setup_logging()
+        self.setup_self.logger()
     
     def has_position(self, symbol: str):
-        logging.info(f"enter has_position({symbol})")
-        logging.info(self.active_positions)
+        self.logger.info(f"enter has_position({symbol})")
+        self.logger.info(self.active_positions)
         position = self.active_positions.get(symbol)
-        logging.info(f"position: {position}")
+        self.logger.info(f"position: {position}")
         return position and float(position.get('amount', 0)) != 0
 
     def has_trade_pair(self, symbol: str):
@@ -57,10 +59,10 @@ class BinanceUSDTFuturesTraderManager:
             )
             
             if response:
-                logging.info(f"做多开仓成功: {response}")
+                self.logger.info(f"做多开仓成功: {response}")
         
         except Exception as e:
-            logging.error(f"Binance 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
+            self.logger.error(f"Binance 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
             raise e
         
     def _init_symbols_info(self):
@@ -71,25 +73,10 @@ class BinanceUSDTFuturesTraderManager:
             self.symbols_info = {
                 s['symbol']: s for s in exchange_info['symbols']
             }
-            logging.info(f"已加载 {len(self.symbols_info)} 个交易对信息")
+            self.logger.info(f"已加载 {len(self.symbols_info)} 个交易对信息")
         except Exception as e:
-            logging.error(f"初始化交易对信息失败: {e}")
+            self.logger.error(f"初始化交易对信息失败: {e}")
             raise
-
-    def setup_logging(self):
-        """设置日志"""
-        self.logger = logging.getLogger('WSManager')
-        self.logger.setLevel(logging.DEBUG)
-        
-        # 文件处理器
-        fh = logging.FileHandler('websocket_manager.log')
-        fh.setLevel(logging.DEBUG)
-        
-        # 格式化器
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(name)s] - %(message)s')
-        fh.setFormatter(formatter)
-        
-        self.logger.addHandler(fh)
 
     def check_heartbeat(self):
         """检查心跳"""
@@ -116,35 +103,35 @@ class BinanceUSDTFuturesTraderManager:
             
             self.is_ws_connected = True
             self.ws_reconnect_count = 0
-            logging.info("WebSocket连接成功建立")
+            self.logger.info("WebSocket连接成功建立")
 
             # 初始化持仓和订阅
             self.active_positions = self.get_active_positions()
             # self.update_price_subscriptions()
             
         except Exception as e:
-            logging.error(f"WebSocket启动错误: {e}")
+            self.logger.error(f"WebSocket启动错误: {e}")
             self.is_ws_connected = False
             self._handle_ws_disconnection()
             
     def _handle_ws_disconnection(self):
         """处理WebSocket断开连接"""
         if self.ws_reconnect_count >= self.MAX_RECONNECT_ATTEMPTS:
-            logging.error("达到最大重连次数，停止重连")
+            self.logger.error("达到最大重连次数，停止重连")
             return False
             
         delay = min(2 ** self.ws_reconnect_count, 300)  # 指数退避，最大延迟5分钟
-        logging.info(f"等待 {delay} 秒后尝试重连...")
+        self.logger.info(f"等待 {delay} 秒后尝试重连...")
         time.sleep(delay)
         
         self.ws_reconnect_count += 1
-        logging.info(f"尝试第 {self.ws_reconnect_count} 次重连")
+        self.logger.info(f"尝试第 {self.ws_reconnect_count} 次重连")
         
         try:
             self._start_ws_monitor()
             return True
         except Exception as e:
-            logging.error(f"重连失败: {e}")
+            self.logger.error(f"重连失败: {e}")
             return False
 
     def _monitor_ws_connection(self):
@@ -195,7 +182,7 @@ class BinanceUSDTFuturesTraderManager:
 
             self.monitored_symbols = current_positions
         except Exception as e:
-            logging.error(f"更新价格订阅失败: {e}")
+            self.logger.error(f"更新价格订阅失败: {e}")
 
     def handle_ws_message(self, _, message):
         """处理WebSocket消息"""
@@ -205,7 +192,7 @@ class BinanceUSDTFuturesTraderManager:
             if isinstance(message, str):
                 message = json.loads(message)
             
-            logging.debug(f"message: {message}")
+            self.logger.debug(f"message: {message}")
             # 处理账户更新消息
             if 'e' in message['data'] and message['data']['e'] == 'ACCOUNT_UPDATE':
                 self.handle_account_update(message['data'])
@@ -215,7 +202,7 @@ class BinanceUSDTFuturesTraderManager:
                 self.handle_price_update(message['data'])
                 
         except Exception as e:
-            logging.error(f"处理WebSocket消息失败: {e}")
+            self.logger.error(f"处理WebSocket消息失败: {e}")
 
     def _keep_listen_key_alive(self):
         """保持listen key活跃"""
@@ -224,20 +211,20 @@ class BinanceUSDTFuturesTraderManager:
                 self.rest_client.new_listen_key()  # 续期listen key
                 time.sleep(1800)  # 每30分钟续期一次
             except Exception as e:
-                logging.error(f"续期listen key失败: {e}")
+                self.logger.error(f"续期listen key失败: {e}")
                 self.is_ws_connected = False
                 time.sleep(60)  # 失败后等待1分钟再试
 
     def handle_account_update(self, message):
         """处理账户更新消息"""
-        logging.debug("处理账户更新")
+        self.logger.debug("处理账户更新")
         try:
             update_message = MessageFormatter.format_account_update(message)
             self.message_queue.put(update_message)
             self.active_positions = self.get_active_positions()
             # self.update_price_subscriptions()
         except Exception as e:
-            logging.error(f"处理账户更新失败: {e}")
+            self.logger.error(f"处理账户更新失败: {e}")
 
     def handle_price_update(self, data):
         """处理价格更新,更新止损"""
@@ -248,7 +235,7 @@ class BinanceUSDTFuturesTraderManager:
                     return default
                 return Decimal(str(value).strip())
             except (InvalidOperation, ConversionSyntax) as e:
-                logging.error(f"Decimal转换失败 - 值: {value}, 错误: {e}")
+                self.logger.error(f"Decimal转换失败 - 值: {value}, 错误: {e}")
                 return default
         try:
             symbol = data['s']
@@ -285,14 +272,14 @@ class BinanceUSDTFuturesTraderManager:
                         self.message_queue.put(update_message)
                         
         except Exception as e:
-            logging.error(f"处理价格更新失败: {e}")
+            self.logger.error(f"处理价格更新失败: {e}")
 
     def update_stop_loss_order(self, symbol: str, stop_price: float):
         try:
             position = self.active_positions[symbol]
 
             self.rest_client.cancel_open_orders(symbol=symbol)
-            logging.debug("创建新止损前")
+            self.logger.debug("创建新止损前")
             response = self.rest_client.new_order(
                 symbol=symbol,
                 side="SELL" if position['amount'] > 0 else "BUY",
@@ -301,13 +288,13 @@ class BinanceUSDTFuturesTraderManager:
                 quantity=abs(position['amount']),
                 timeInForce="GTC"
             )
-            logging.debug("创建新止损后")
+            self.logger.debug("创建新止损后")
 
             if not response:
                raise
 
         except Exception as e:
-            logging.error(f"更新止损订单失败 {symbol}: {e}")
+            self.logger.error(f"更新止损订单失败 {symbol}: {e}")
 
 
     def calculate_new_stop_loss(self, price_change_percent: Decimal, entry_price: Decimal) -> Decimal:
@@ -317,7 +304,7 @@ class BinanceUSDTFuturesTraderManager:
             stop_loss_percent = Decimal('100') + (rise_times * Decimal('5'))
             return entry_price * (stop_loss_percent / Decimal('100'))
         except Exception as e:
-            logging.error(f"计算止损价格失败: {e}")
+            self.logger.error(f"计算止损价格失败: {e}")
             return entry_price * Decimal('0.95')
 
     def get_symbol_info(self, symbol: str) -> dict:
@@ -336,7 +323,7 @@ class BinanceUSDTFuturesTraderManager:
             ticker = self.rest_client.ticker_price(symbol=symbol)
             return float(ticker['price'])
         except Exception as e:
-            logging.error(f"获取价格失败: {e}")
+            self.logger.error(f"获取价格失败: {e}")
             raise
 
     def calculate_quantity(self, symbol: str, usdt_amount: float, price: float) -> float:
@@ -363,7 +350,7 @@ class BinanceUSDTFuturesTraderManager:
                 
             return quantity
         except Exception as e:
-            logging.error(f"计算下单数量失败: {e}")
+            self.logger.error(f"计算下单数量失败: {e}")
             raise
 
     def close_position(self, symbol: str):
@@ -387,7 +374,7 @@ class BinanceUSDTFuturesTraderManager:
                 return response
             return None
         except Exception as e:
-            logging.error(f"平仓失败: {e}")
+            self.logger.error(f"平仓失败: {e}")
             raise
 
     def set_leverage(self, symbol: str, leverage: int):
@@ -397,16 +384,16 @@ class BinanceUSDTFuturesTraderManager:
                 symbol=symbol,
                 leverage=leverage
             )
-            logging.info(f"设置杠杆响应: {response}")
+            self.logger.info(f"设置杠杆响应: {response}")
             return response
         except Exception as e:
-            logging.error(f"设置杠杆失败: {e}")
+            self.logger.error(f"设置杠杆失败: {e}")
             raise
 
     def round_price(self, price: float, symbol: str) -> float:
             """按照交易对精度四舍五入价格"""
             try:
-                logging.debug(self.symbols_info[symbol])
+                self.logger.debug(self.symbols_info[symbol])
                 pf = next(filter for filter in self.symbols_info[symbol]['filters'] if filter['filterType'] == 'PRICE_FILTER')
                 min_price = float(pf['minPrice'])
                 max_price = float(pf['maxPrice'])
@@ -430,7 +417,7 @@ class BinanceUSDTFuturesTraderManager:
                 return rounded_price
 
             except Exception as e:
-                logging.error(f"处理价格时出错: {e}")
+                self.logger.error(f"处理价格时出错: {e}")
             raise
 
     def get_price_precision(self, symbol: str) -> int:
@@ -441,7 +428,7 @@ class BinanceUSDTFuturesTraderManager:
             tick_size = float(price_filter['tickSize'])
             return len(str(tick_size).rstrip('0').split('.')[-1])
         except Exception as e:
-            logging.error(f"获取价格精度失败: {e}")
+            self.logger.error(f"获取价格精度失败: {e}")
             raise
 
     def limit_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
@@ -454,10 +441,10 @@ class BinanceUSDTFuturesTraderManager:
                 
                 price = self.round_price(current_price * 0.97, symbol)
 
-                logging.info(f"当前市价: {current_price}, 下单价格: {price}")
+                self.logger.info(f"当前市价: {current_price}, 下单价格: {price}")
 
                 quantity = self.calculate_quantity(symbol, usdt_amount, price=price)
-                logging.info(f"下单数量: {quantity}")
+                self.logger.info(f"下单数量: {quantity}")
                 
                 # 4. 执行市价开多订单
                 open_params = {
@@ -470,12 +457,12 @@ class BinanceUSDTFuturesTraderManager:
                 }
                 
                 response = self.rest_client.new_order(**open_params)
-                logging.info(f"开仓订单响应: {response}")
+                self.logger.info(f"开仓订单响应: {response}")
                 
                 # 5. 设置止盈单
                 if tp_percent:
                     tp_price = self.round_price(current_price * (1 + tp_percent/100), symbol)
-                    logging.info(f"止盈价格: {tp_price}")
+                    self.logger.info(f"止盈价格: {tp_price}")
                     tp_params = {
                         'symbol': symbol,
                         'side': 'SELL',
@@ -486,12 +473,12 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     tp_response = self.rest_client.new_order(**tp_params)
-                    logging.info(f"止盈订单响应: {tp_response}")
+                    self.logger.info(f"止盈订单响应: {tp_response}")
 
                 # 6. 设置止损单
                 if sl_percent:
                     sl_price = self.round_price(current_price * (1 - sl_percent/100), symbol)
-                    logging.info(f"止损价格: {sl_price}")
+                    self.logger.info(f"止损价格: {sl_price}")
                     sl_params = {
                         'symbol': symbol,
                         'side': 'SELL',
@@ -502,7 +489,7 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     sl_response = self.rest_client.new_order(**sl_params)
-                    logging.info(f"止损订单响应: {sl_response}")
+                    self.logger.info(f"止损订单响应: {sl_response}")
 
                 # 7. 设置追踪止损单
                 if sl_percent:
@@ -515,7 +502,7 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     sl_response = self.rest_client.new_order(**sl_params)
-                    logging.info(f"追踪止损订单响应: {sl_response}")
+                    self.logger.info(f"追踪止损订单响应: {sl_response}")
                 
                 return {
                     'open_order': response,
@@ -524,13 +511,13 @@ class BinanceUSDTFuturesTraderManager:
                 }
                 
             except Exception as e:
-                logging.error(f"开仓设置止盈止损失败: {e}")
+                self.logger.error(f"开仓设置止盈止损失败: {e}")
                 # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
                 try:
                     self.close_position(symbol)
-                    logging.info("已关闭仓位")
+                    self.logger.info("已关闭仓位")
                 except:
-                    logging.error("关闭仓位失败，请手动处理")
+                    self.logger.error("关闭仓位失败，请手动处理")
                 raise
     
     def market_open_long_with_tp_sl(self, symbol: str, usdt_amount: float, 
@@ -539,11 +526,11 @@ class BinanceUSDTFuturesTraderManager:
             try:
                 # 2. 计算下单数量
                 quantity = self.calculate_quantity(symbol, usdt_amount)
-                logging.info(f"下单数量: {quantity}")
+                self.logger.info(f"下单数量: {quantity}")
                 
                 # 3. 获取当前市价
                 current_price = self.get_symbol_price(symbol)
-                logging.info(f"当前市价: {current_price}")
+                self.logger.info(f"当前市价: {current_price}")
                 
                 # 4. 执行市价开多订单
                 open_params = {
@@ -554,12 +541,12 @@ class BinanceUSDTFuturesTraderManager:
                 }
                 
                 response = self.rest_client.new_order(**open_params)
-                logging.info(f"开仓订单响应: {response}")
+                self.logger.info(f"开仓订单响应: {response}")
                 
                 # 5. 设置止盈单
                 if tp_percent:
                     tp_price = self.round_price(current_price * (1 + tp_percent/100), symbol)
-                    logging.info(f"止盈价格: {tp_price}")
+                    self.logger.info(f"止盈价格: {tp_price}")
                     tp_params = {
                         'symbol': symbol,
                         'side': 'SELL',
@@ -570,12 +557,12 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     tp_response = self.rest_client.new_order(**tp_params)
-                    logging.info(f"止盈订单响应: {tp_response}")
+                    self.logger.info(f"止盈订单响应: {tp_response}")
                 
                 # 6. 设置止损单
                 if sl_percent:
                     sl_price = self.round_price(current_price * (1 - sl_percent/100), symbol)
-                    logging.info(f"止损价格: {sl_price}")
+                    self.logger.info(f"止损价格: {sl_price}")
                     sl_params = {
                         'symbol': symbol,
                         'side': 'SELL',
@@ -585,7 +572,7 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     sl_response = self.rest_client.new_order(**sl_params)
-                    logging.info(f"追踪止损订单响应: {sl_response}")
+                    self.logger.info(f"追踪止损订单响应: {sl_response}")
                 
                 return {
                     'open_order': response,
@@ -594,13 +581,13 @@ class BinanceUSDTFuturesTraderManager:
                 }
                 
             except Exception as e:
-                logging.error(f"开仓设置止盈止损失败: {e}")
+                self.logger.error(f"开仓设置止盈止损失败: {e}")
                 # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
                 try:
                     self.close_position(symbol)
-                    logging.info("已关闭仓位")
+                    self.logger.info("已关闭仓位")
                 except:
-                    logging.error("关闭仓位失败，请手动处理")
+                    self.logger.error("关闭仓位失败，请手动处理")
                 raise
 
     def market_open_short_with_tp_sl(self, symbol: str, usdt_amount: float,
@@ -609,11 +596,11 @@ class BinanceUSDTFuturesTraderManager:
             try:
                 # 2. 计算下单数量
                 quantity = self.calculate_quantity(symbol, usdt_amount)
-                logging.info(f"下单数量: {quantity}")
+                self.logger.info(f"下单数量: {quantity}")
                 
                 # 3. 获取当前市价
                 current_price = self.get_symbol_price(symbol)
-                logging.info(f"当前市价: {current_price}")
+                self.logger.info(f"当前市价: {current_price}")
                 
                 # 4. 执行市价开空订单
                 open_params = {
@@ -624,12 +611,12 @@ class BinanceUSDTFuturesTraderManager:
                 }
                 
                 response = self.rest_client.new_order(**open_params)
-                logging.info(f"开仓订单响应: {response}")
+                self.logger.info(f"开仓订单响应: {response}")
                 
                 # 5. 设置止盈单
                 if tp_percent:
                     tp_price = self.round_price(current_price * (1 - tp_percent/100), symbol)
-                    logging.info(f"止盈价格: {tp_price}")
+                    self.logger.info(f"止盈价格: {tp_price}")
                     tp_params = {
                         'symbol': symbol,
                         'side': 'BUY',
@@ -640,12 +627,12 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     tp_response = self.rest_client.new_order(**tp_params)
-                    logging.info(f"止盈订单响应: {tp_response}")
+                    self.logger.info(f"止盈订单响应: {tp_response}")
                 
                 # 6. 设置止损单
                 if sl_percent:
                     sl_price = self.round_price(current_price * (1 + sl_percent/100), symbol)
-                    logging.info(f"止损价格: {sl_price}")
+                    self.logger.info(f"止损价格: {sl_price}")
                     sl_params = {
                         'symbol': symbol,
                         'side': 'BUY',
@@ -656,7 +643,7 @@ class BinanceUSDTFuturesTraderManager:
                         'reduceOnly': True
                     }
                     sl_response = self.rest_client.new_order(**sl_params)
-                    logging.info(f"止损订单响应: {sl_response}")
+                    self.logger.info(f"止损订单响应: {sl_response}")
                 
                 return {
                     'open_order': response,
@@ -665,13 +652,13 @@ class BinanceUSDTFuturesTraderManager:
                 }
                 
             except Exception as e:
-                logging.error(f"开仓设置止盈止损失败: {e}")
+                self.logger.error(f"开仓设置止盈止损失败: {e}")
                 # 如果开仓成功但设置止盈止损失败，尝试关闭仓位
                 try:
                     self.close_position(symbol)
-                    logging.info("已关闭仓位")
+                    self.logger.info("已关闭仓位")
                 except:
-                    logging.error("关闭仓位失败，请手动处理")
+                    self.logger.error("关闭仓位失败，请手动处理")
                 raise
 
     def get_position(self, symbol: str):
@@ -680,7 +667,7 @@ class BinanceUSDTFuturesTraderManager:
             positions = self.rest_client.get_position_risk()
             return next((p for p in positions if p['symbol'] == symbol), None)
         except Exception as e:
-            logging.error(f"获取持仓信息失败: {e}")
+            self.logger.error(f"获取持仓信息失败: {e}")
             raise
 
     def get_all_positions(self):
@@ -688,7 +675,7 @@ class BinanceUSDTFuturesTraderManager:
             positions = self.rest_client.get_position_risk()
             return positions
         except Exception as e:
-            logging.error(f"获取持仓信息失败: {e}")
+            self.logger.error(f"获取持仓信息失败: {e}")
             raise
     
     def format_position_risk(positions):
@@ -756,7 +743,7 @@ class BinanceUSDTFuturesTraderManager:
                     }
             return active_positions
         except Exception as e:
-            logging.error(f"获取活跃持仓失败: {e}")
+            self.logger.error(f"获取活跃持仓失败: {e}")
             return {}
 
     async def process_message_queue(self):
@@ -770,7 +757,7 @@ class BinanceUSDTFuturesTraderManager:
             except queue.Empty:
                 pass
             except Exception as e:
-                logging.error(f"处理消息队列失败: {e}")
+                self.logger.error(f"处理消息队列失败: {e}")
             finally:
                 await asyncio.sleep(1)
 
@@ -789,11 +776,11 @@ class BinanceUSDTFuturesTraderManager:
                 parse_mode='HTML'
             )
         except Exception as e:
-            logging.error(f"发送Telegram消息失败: {e}")
+            self.logger.error(f"发送Telegram消息失败: {e}")
 
 # 在程序开始处添加日志配置
-# logging.basicConfig(
-    # level=logging.DEBUG,
+# self.logger.basicConfig(
+    # level=self.logger.DEBUG,
     # format='%(asctime)s - %(levelname)s - %(message)s'
 # )
 # config = ConfigLoader.load_from_env()
@@ -811,9 +798,9 @@ class BinanceUSDTFuturesTraderManager:
 # symbol = "ACTUSDT"
 # while (1):
     # if trader.has_position("ACTUSDT"):
-        # logging.info("有持仓")
+        # self.logger.info("有持仓")
     # else:
-        # logging.info("没持仓")
+        # self.logger.info("没持仓")
         # trader.limit_open_long_with_tp_sl(
             # symbol=symbol, 
             # usdt_amount=100,

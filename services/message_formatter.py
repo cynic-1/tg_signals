@@ -1,8 +1,102 @@
+from typing import Dict, List
 from datetime import datetime
+from models.exchange_handler import ExchangeHandler
 import logging
 
-
 class MessageFormatter:
+    def __init__(self):
+        self.exchange_handler = ExchangeHandler()
+    
+    def format_performance(self, perf: Dict) -> str:
+        """格式化性能数据"""
+        periods = [
+            ('min1', '1分钟'),
+            ('min5', '5分钟'),
+            ('min15', '15分钟'),
+            ('hour', '1小时'),
+            ('day', '24小时'),
+            ('week', '7天'),
+            ('month', '30天'),
+            ('year', '1年')
+        ]
+        
+        perf_str = []
+        for period_key, period_name in periods:
+            if period_key in perf and perf[period_key] is not None:
+                value = perf[period_key]
+                try:
+                    value = float(value)
+                    sign = '+' if value > 0 else ''
+                    perf_str.append(f"{period_name}: {sign}{value:.2f}%")
+                except (ValueError, TypeError):
+                    perf_str.append(f"{period_name}: N/A")
+                    
+        return ' | '.join(perf_str)
+    
+    def format_message(self, gainers: List[Dict], losers: List[Dict]) -> str:
+        """格式化完整消息"""
+        if not (gainers or losers):
+            return None
+            
+        message = []
+        
+        # 上涨币种摘要
+        if gainers:
+            gainer_summary = "🟢 " + ", ".join([
+                f"{token['symbol']}(+{token['performance']['min5']:.2f}%)" 
+                for token in gainers
+            ])
+            message.append(gainer_summary)
+        
+        # 下跌币种摘要
+        if losers:
+            loser_summary = "🔴 " + ", ".join([
+                f"{token['symbol']}({token['performance']['min5']:.2f}%)" 
+                for token in losers
+            ])
+            message.append(loser_summary)
+            
+        message.append("\n" + "=" * 30 + "\n")
+        
+        # 详细信息
+        if gainers:
+            message.append("🟢 详细信息:")
+            for token in gainers:
+                message.extend(self._format_token_details(token))
+                
+        if losers:
+            message.append('\n🔴 详细信息:')
+            for token in losers:
+                message.extend(self._format_token_details(token))
+                
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        message.append(f"\n更新时间: {current_time}")
+        
+        return '\n'.join(message)
+    
+    def _format_token_details(self, token: Dict) -> List[str]:
+        """格式化单个代币详细信息"""
+        exchanges = token.get('exchanges', [])
+        sorted_exchanges = self.exchange_handler.sort_exchanges(exchanges)
+        
+        tags = token.get('tags', '')
+        tags_display = f'<b>标签:</b> {tags}' if tags else ''
+        
+        details = [
+            f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
+            f'<b>价格:</b> {token["price"]}',
+            f'<b>市值:</b> {token["marketcap"]}',
+            f'<b>交易量:</b> {token["volume"]}',
+            f'<b>涨跌幅:</b> {self.format_performance(token["performance"])}',
+            f'<b>交易所:</b> {", ".join(sorted_exchanges)}'
+        ]
+        
+        if tags_display:
+            details.append(tags_display)
+            
+        details.append('')
+        return details
+
     @staticmethod
     def _format_balance(balance: dict) -> str:
         """格式化单个资产余额信息"""
@@ -178,46 +272,3 @@ class MessageFormatter:
         except Exception as e:
             logging.error(f"格式化Bybit交易数据失败: {e}")
             return f"❌ 格式化消息失败: {str(e)}"
-
-
-# 使用示例
-async def handle_websocket_message(message: dict):
-    if message['e'] == 'ACCOUNT_UPDATE':
-        formatted_message = MessageFormatter.format_account_update(message)
-        # 发送到Telegram
-        await send_telegram_message(formatted_message)
-
-# 测试数据
-test_data = {
-    "e": "ACCOUNT_UPDATE",
-    "E": 1564745798939,
-    "T": 1564745798938,
-    "a": {
-        "m": "ORDER",
-        "B": [
-            {
-                "a": "USDT",
-                "wb": "122624.12345678",
-                "cw": "100.12345678",
-                "bc": "50.12345678"
-            }
-        ],
-        "P": [
-            {
-                "s": "BTCUSDT",
-                "pa": "20",
-                "ep": "6563.66500",
-                "bep": "6563.6",
-                "cr": "0",
-                "up": "2850.21200",
-                "mt": "isolated",
-                "iw": "13200.70726908",
-                "ps": "LONG"
-            }
-        ]
-    }
-}
-
-# 测试输出
-formatted_message = MessageFormatter.format_account_update(test_data)
-print(formatted_message)
