@@ -80,7 +80,12 @@ class MessageFormatter:
         sorted_exchanges = self.exchange_handler.sort_exchanges(exchanges)
         
         tags = token.get('tags', '')
-        tags_display = f'<b>标签:</b> {tags}' if tags else ''
+        if tags:
+            # 分割标签并添加#号
+            tag_list = [f"#{tag.strip()}" for tag in tags.split(',') if tag.strip()]
+            tags_display = f'<b>标签:</b> {" ".join(tag_list)}'
+        else:
+            tags_display = ''
         
         details = [
             f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',
