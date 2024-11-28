@@ -217,6 +217,35 @@ class BinanceUSDTFuturesTraderManager:
             self.logger.error(f"初始化交易对信息失败: {e}")
             raise
 
+    def has_trade_pair(self, symbol: str):
+            return symbol in self.symbols_info
+
+    def has_position(self, symbol: str):
+        self.logger.info(f"enter has_position({symbol})")
+        position = self.active_positions.get(symbol)
+        self.logger.info(f"position: {position}")
+        return position and float(position.get('amount', 0)) != 0
+
+    def new_order(self, leverage: int, symbol: str, usdt_amount: float, 
+                                    tp_percent: float = None, sl_percent: float = None, long: bool = True):
+            self.set_leverage(symbol=symbol, leverage=leverage)
+
+            try: 
+                # 执行开仓
+                response = self.market_open_long_with_tp_sl(
+                    symbol=symbol,
+                    usdt_amount=usdt_amount,
+                    tp_percent=tp_percent,
+                    sl_percent=sl_percent
+                )
+
+                if response:
+                    self.logger.info(f"做多开仓成功: {response}")
+
+            except Exception as e:
+                self.logger.error(f"Binance 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
+                raise e
+
     def update_price_subscriptions(self):
         """更新价格订阅"""
         try:

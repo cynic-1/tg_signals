@@ -10,8 +10,6 @@ from datetime import datetime
 from services.message_formatter import MessageFormatter
 from utils import setup_logger
 from decimal import Decimal, InvalidOperation
-import logging
-
 
 
 class BybitUSDTFuturesTraderManager:
