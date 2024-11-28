@@ -6,11 +6,11 @@ from utils import setup_logger, SignalTracker
 
 class TokenFilter:
     def __init__(self):
+        self.logger = setup_logger('Token Filter')
         self.major_exchanges: Set[str] = {'bybit', 'binance', 'okx'}
         self.change_threshold_5min: float = 5
         self.change_threshold_1min: float = 2
         self.token_tags = self._load_token_tags()
-        self.logger = setup_logger('Token Filter')
                 
         # 初始化信号追踪器
         self.signal_tracker = SignalTracker(expiry_minutes=30)
@@ -92,6 +92,7 @@ class TokenFilter:
                     gainers.append(token_info)
                 else:
                     losers.append(token_info)
+                self.signal_tracker.add_signal(token['symbol'])
                     
         gainers.sort(key=lambda x: x['performance']['min5'], reverse=True)
         losers.sort(key=lambda x: x['performance']['min5'])

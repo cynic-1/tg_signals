@@ -99,7 +99,7 @@ class MessageFormatter:
                 if tag_list:
                     tags_display = f'<b>标签:</b> {" ".join(tag_list)}'
             except Exception as e:
-                self.logger.error(f"处理标签时出错: {e}, tags: {tags}")
+                logging.error(f"处理标签时出错: {e}, tags: {tags}")
         
         details = [
             f'\n<b>{token["symbol"]}</b> (#{token["rank"]} {token["name"]})',

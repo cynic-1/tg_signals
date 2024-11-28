@@ -1,433 +1,416 @@
 id,name,symbol,rank,Tags
 1,Bitcoin,BTC,1,BTC
-1027,Ethereum,ETH,2,"ETH,L1"
+1027,Ethereum,ETH,2,ETH
 825,Tether,USDT,3,
-5426,Solana,SOL,4,"Solana,L1"
-1839,BNB,BNB,5,"CEX,BSC,BN,L1"
-74,Dogecoin,DOGE,6,"Meme,Musk,Dog,PoW,ETH"
-52,XRP,XRP,7,"L1,SEC"
+5426,Solana,SOL,4,SOL
+1839,BNB,BNB,5,"CEX,BN,BNB"
+74,Dogecoin,DOGE,6,"Meme,Musk,Dog,PoW,ETH,Politics"
+52,XRP,XRP,7,"SEC,Payment"
 3408,USDC,USDC,8,
-2010,Cardano,ADA,9,L1
-1958,TRON,TRX,10,"Sun,L1"
+2010,Cardano,ADA,9,ADA
+1958,TRON,TRX,10,"JustinSun,TRX"
 5994,Shiba Inu,SHIB,11,"Meme,Dog,ETH"
-11419,Toncoin,TON,12,"TON,L1"
-5805,Avalanche,AVAX,13,L2
-20947,Sui,SUI,14,"L1,Move,GrayScale"
+11419,Toncoin,TON,12,"TON,Russia"
+5805,Avalanche,AVAX,13,AVAX
+20947,Sui,SUI,14,"SUI,Move,Grayscale"
 1975,Chainlink,LINK,15,"RWA,Oracle"
 1831,Bitcoin Cash,BCH,16,"BTC,PoW"
-6636,Polkadot,DOT,17,L2
-3957,LEO Token,LEO,18,"ETH,EOS"
-21794,Aptos,APT,19,"L1,Move"
-6535,NEAR Protocol,NEAR,20,"L1,AI,Modular"
-24478,Pepe,PEPE,21,"Pepe,ETH,Meme"
+6636,Polkadot,DOT,17,"DOT,Modular,L0"
+3957,LEO Token,LEO,18,"CEX,Bitfinex"
+21794,Aptos,APT,19,"APT,Move"
+6535,NEAR Protocol,NEAR,20,"AI,Modular,Abstraction"
+24478,Pepe,PEPE,21,"PEPE,ETH,Meme"
 2,Litecoin,LTC,22,PoW
 7083,Uniswap,UNI,23,"DeFi,SEC,ETH,DEX"
-3635,Cronos,CRO,24,"L1,DeFi,GameFi"
-22974,Bittensor,TAO,25,"AI,DePIN,GrayScale"
-8916,Internet Computer,ICP,26,"Infra,L1"
-512,Stellar,XLM,27,"Infra,L1,Payment"
+3635,Cronos,CRO,24,"CEX,Crypto.com,CRO"
+22974,Bittensor,TAO,25,"AI,DePIN,GrayScale,PoW"
+8916,Internet Computer,ICP,26,"AI,Storage,DePIN"
+512,Stellar,XLM,27,"Payment,XLM,XRP"
 5690,Render,RENDER,28,"AI,DePIN,Computing,Apple"
 3773,ASI Alliance,FET,29,"AI,DePIN"
 20396,Kaspa,KAS,30,PoW
-1321,Ethereum Classic,ETC,31,PoW
+1321,Ethereum Classic,ETC,31,"PoW,ETH"
 4943,Dai,DAI,32,
-21353,WhiteBIT Coin,WBT,33,
-28752,dogwifhat,WIF,34,"Meme,Solana,Dog"
+21353,WhiteBIT Coin,WBT,33,CEX
+28752,dogwifhat,WIF,34,"Meme,SOL,Dog"
 29470,Ethena USDe,USDE,35,
-28321,Polygon,POL,36,"ETH,L2"
-4847,Stacks,STX,37,BTC
-328,Monero,XMR,38,Privacy
+28321,Polygon,POL,36,"ETH,POL"
+4847,Stacks,STX,37,"BTC,Grayscale"
+328,Monero,XMR,38,"Privacy,PoW"
 7278,Aave,AAVE,39,"DeFi,SEC,ETH,Lending,Trump"
-3897,OKB,OKB,40,CEX
-23095,Bonk,BONK,41,"Solana,Meme,Dog"
-2280,Filecoin,FIL,42,Storage.PoW
-11841,Arbitrum,ARB,43,L2
-7226,Injective,INJ,44,"L1,DeFi"
-27075,Mantle,MNT,45,"L2,DAO"
+3897,OKB,OKB,40,"CEX,OKX"
+23095,Bonk,BONK,41,"SOL,Meme,Dog,Phone"
+2280,Filecoin,FIL,42,"Storage,DePIN"
+11841,Arbitrum,ARB,43,"ARB,ETH"
+7226,Injective,INJ,44,"INJ,DeFi,COSMOS"
+27075,Mantle,MNT,45,"CEX,Bybit"
 26081,First Digital USD,FDUSD,46,
-4642,Hedera,HBAR,47,Dapp
+4642,Hedera,HBAR,47,HBAR
 22861,Celestia,TIA,48,"Modular,DA"
-10603,Immutable,IMX,49,"ETH,NFT,L2"
-3077,VeChain,VET,50,L1
-3513,Fantom,FTM,51,L1
-11092,Bitget Token,BGB,52,CEX
-3794,Cosmos Hub,ATOM,53,Cosmos
-11840,Optimism,OP,54,L2
-10804,FLOKI,FLOKI,55,"Solana,Meme,Dog"
-4157,THORChain,RUNE,56,"DeFi,L1"
-23149,Sei,SEI,57,"L1,L2"
+10603,Immutable,IMX,49,"ETH,NFT,IMX,GameFi"
+3077,VeChain,VET,50,"IoT,VET"
+3513,Fantom,FTM,51,"FTM,ONE"
+11092,Bitget Token,BGB,52,"CEX,Bitget"
+3794,Cosmos Hub,ATOM,53,COSMOS
+11840,Optimism,OP,54,"ETH,L2"
+10804,FLOKI,FLOKI,55,"SOL,Meme,Dog"
+4157,THORChain,RUNE,56,"RUNE,COSMOS"
+23149,Sei,SEI,57,"SEI,COSMOS,ETH"
 6719,The Graph,GRT,58,Data
 -5000,HEX,HEX,59,
 30171,Ethena,ENA,60,"DeFi,ETH,RWA,Stablecoin"
-29210,Jupiter,JUP,61,"Solana,DEX,Aggregator"
-29160,HTX DAO,HTX,62,CEX
-28177,Pyth Network,PYTH,63,"Solana,Oracle"
+29210,Jupiter,JUP,61,"SOL,DEX,Aggregator"
+29160,HTX DAO,HTX,62,"CEX,HTX,JustinSun"
+28177,Pyth Network,PYTH,63,"SOL,Oracle"
 13502,Worldcoin,WLD,64,"AI,SamAltman,OpenAI"
-28782,PopCat,POPCat,65,"Solana,Meme,Cat"
-33788,Peanut the Squirrel,PNUT,66,"Solana,Meme,Politics"
-1518,Maker,MKR,67,"ETH,Stablecoin,RWA"
-2416,Theta Network,THETA,68,"DePIN,L1"
-2087,KuCoin,KCS,69,CEX
-6536,MANTRA,OM,70,"RWA,L1"
-4269,Gate,GT,71,CEX
-4030,Algorand,ALGO,72,L1
+28782,PopCat,POPCat,65,"SOL,Meme,Cat"
+33788,Peanut the Squirrel,PNUT,66,"SOL,Meme,Politics"
+1518,Maker,MKR,67,"ETH,Stablecoin,RWA,DeFi"
+2416,Theta Network,THETA,68,"DePIN,Storage,Computing"
+2087,KuCoin,KCS,69,"CEX,Kucoin"
+6536,MANTRA,OM,70,RWA
+4269,Gate,GT,71,"CEX,Gate.io"
+4030,Algorand,ALGO,72,SEC
 21159,Ondo,ONDO,73,"RWA,BlackRock"
-8526,Raydium,RAY,74,"Solana,DeFi,DEX,Meme,PumpFun"
+8526,Raydium,RAY,74,"SOL,DeFi,DEX,Meme"
 5632,Arweave,AR,75,"Storage,AO,DePIN"
 29743,Brett,BRETT,76,"Base,Meme"
-3602,Bitcoin SV,BSV,77,PoW
+3602,Bitcoin SV,BSV,77,"PoW,BTC"
 28298,Beam,BEAM,78,GameFi
-22615,Fasttoken,FTN,79,L1
-5665,Helium,HNT,80,"DePIN,Energy,IoT,Mobile,Solana"
-7080,GALA,GALA,81,GameFi
+22615,Fasttoken,FTN,79,ETH
+5665,Helium,HNT,80,"DePIN,Energy,IoT,Mobile"
+7080,GALA,GALA,81,"GameFi,Metaverse,NFT"
 8000,Lido DAO,LDO,82,"ETH,Staking"
 32521,Neiro,NEIRO,83,"Dog,Meme,ETH"
-16086,BitTorrent,BTT,84,Sun
-22691,Starknet,STRK,85,"L2,ZK"
-8425,JasmyCoin,JASMY,86,"Japan,L1"
+16086,BitTorrent,BTT,84,JustinSun
+22691,Starknet,STRK,85,"ETH,STRK,ZK"
+8425,JasmyCoin,JASMY,86,"Japan,IoT,Data"
 29270,Aerodrome Finance,AERO,87,"DEX,Perpetual,Base"
-4558,Flow,FLOW,88,"L1,GameFi"
-3155,Quant,QNT,89,L1
-11145,Pulsechain,PLS,90,ETH
-9481,Pendle,PENDLE,91,"IRS,DeFi"
-23254,Core,CORE,92,L1
-33440,Goatseus Maximus,GOAT,93,"AI,Meme"
-9104,AIOZ Network,AIOZ,94,"L1,DePIN"
-1765,EOS,EOS,95,L1
-30126,Cat in a dogs world,MEW,96,"Meme,Cat,Solana"
-28324,dYdX,DYDX,97,"Perpetual,L1,DeFi"
+4558,Flow,FLOW,88,"GameFi,Metaverse,NFT"
+3155,Quant,QNT,89,QNT
+9481,Pendle,PENDLE,91,"IRS,DeFi,Staking"
+23254,Core,CORE,92,BTC
+33440,Goatseus Maximus,GOAT,93,"AI,Meme,SOL"
+9104,AIOZ Network,AIOZ,94,"AI,DePIN"
+1765,EOS,EOS,95,EOS
+30126,Cat in a dogs world,MEW,96,"Meme,Cat,SOL"
+28324,dYdX,DYDX,97,"Perpetual,Prediction,DeFi,COSMOS"
 25028,ORDI,ORDI,98,"BRC20,BTC"
-6892,MultiversX,EGLD,99,L1
+6892,MultiversX,EGLD,99,EGLD
 6783,Axie Infinity,AXS,100,GameFi
-7950,Flare,FLR,101,L1
-1376,NEO,NEO,102,"L1,China"
-18876,ApeCoin,APE,103,"NFT,L1,PumpFun"
-7431,Akash Network,AKT,104,"Computing,DePIN"
-10791,eCash,XEC,105,"L1,PoW"
+7950,Flare,FLR,101,FLR
+1376,NEO,NEO,102,"NEO,China"
+18876,ApeCoin,APE,103,NFT
+7431,Akash Network,AKT,104,"Computing,DePIN,AI"
+10791,eCash,XEC,105,"BTC,PoW,Privacy,AVAX"
 19891,USDD,USDD,106,
-2694,NEXO,NEXO,107,DeFi
+2694,NEXO,NEXO,107,"SEC,Business"
 28850,Notcoin,NOT,108,"Meme,TON"
-8646,Mina Protocol,MINA,109,L1
-2011,Tezos,XTZ,110,L1
-32880,Kaia,KAIA,111,"SocialFi,L1"
-32956,Grass,GRASS,112,"Computing,DePIN"
-6210,The Sandbox,SAND,113,Metaverse
-27659,Mog Coin,MOG,114,"Cat,Meme,Solana"
-7334,Conflux,CFX,115,"L1,China,HK"
-1659,Gnosis,GNO,116,"DeFi,L1"
-5176,Tether Gold,XAUT,117,RWA
+8646,Mina Protocol,MINA,109,ZK
+2011,Tezos,XTZ,110,XTZ
+32880,Kaia,KAIA,111,"SocialFi,Line"
+32956,Grass,GRASS,112,"Computing,DePIN,Data"
+6210,The Sandbox,SAND,113,"Metaverse,GameFi,NFT"
+27659,Mog Coin,MOG,114,"Cat,Meme,SOL"
+7334,Conflux,CFX,115,"CFX,China,HK"
+1659,Gnosis,GNO,116,"DeFi,Prediction,Payment"
+5176,Tether Gold,XAUT,117,"RWA,Gold"
 6952,Frax,FRAX,118,Stablecoin
-33566,Act I : The AI Prophecy,ACT,119,"AI,Meme,Solona,PNUT"
-23054,Cheelee,CHEEL,120,GameFi
+33566,Act I : The AI Prophecy,ACT,119,"AI,Meme,SOL"
+23054,Cheelee,CHEEL,120,"GameFi,BNB"
 29587,Wormhole,W,121,Bridge
-1966,Decentraland,MANA,122,Metaverse
-25417,PulseX,PLSX,123,DEX
-29870,BOOK OF MEME,BOME,124,"Meme,Pepe,Solana"
+1966,Decentraland,MANA,122,"Metaverse,GameFi,NFT"
+29870,BOOK OF MEME,BOME,124,"Meme,Pepe,SOL"
 27565,Arkham,ARKM,125,"AI,SamAltman"
-8290,SuperVerse,SUPER,126,GameFi
-28081,SPX6900,SPX,127,Meme
+8290,SuperVerse,SUPER,126,"GameFi,Metaverse,NFT"
+28081,SPX6900,SPX,127,"Meme,SOL"
 1437,Zcash,ZEC,128,"PoW,Privacy"
 4195,FTX,FTT,129,"CEX,FTX,SBF"
 17799,Axelar,AXL,130,Bridge
-4066,Chiliz,CHZ,131,Sports
-1.73E+12,Fwog,FWOG,132,"Meme,Solona"
+4066,Chiliz,CHZ,131,"Sports,Fans"
+1.73E+12,Fwog,FWOG,132,"Meme,SOL"
 4948,Nervos Network,CKB,133,BTC
-13855,Ethereum Name Service,ENS,134,"ETH,DNS"
-24911,Turbo,TURBO,135,"Meme,AI,Solana"
-24091,ZKsync,ZK,136,"ZK,L2"
-24835,PepeCoin,PEPECOIN,137,"Pepe,ETH"
+13855,Ethereum Name Service,ENS,134,"ETH,DID"
+24911,Turbo,TURBO,135,"Meme,AI,SOL"
+24091,ZKsync,ZK,136,ZK
+24835,PepeCoin,PEPECOIN,137,"PEPE,ETH,Meme"
 3987,Beldex,BDX,138,Privacy
 4172,Terra Luna Classic,LUNC,139,"Terra,DoKwon"
-21585,Safe,SAFE,140,Payment
-14101,Ronin,RON,141,GameFi
-7186,PancakeSwap,CAKE,142,"BSC,BN,DEX"
-7653,Oasis,ROSE,143,"L1,Privacy"
-4705,PAX Gold,PAXG,144,RWA
-27772,PayPal USD,PYUSD,145,
+21585,Safe,SAFE,140,"Payment,GNO"
+14101,Ronin,RON,141,"GameFi,Metaverse,NFT"
+7186,PancakeSwap,CAKE,142,"BNB,BN,DEX"
+7653,Oasis,ROSE,143,Privacy
+4705,PAX Gold,PAXG,144,"RWA,Gold"
 28194,SATS,SATS,146,"BRC20,BTC"
 26873,CorgiAI,CORGIAI,147,AI
-2586,Synthetix Network,SNX,148,AI
-2563,TrueUSD,TUSD,149,
+2586,Synthetix Network,SNX,148,"Perpetual,DEX"
 7326,DeXe,DEXE,150,DAO
-1720,IOTA,IOTA,151,"DePIN,L1"
+1720,IOTA,IOTA,151,"DePIN,IoT"
 23121,Blur,BLUR,152,NFT
-30494,Eigenlayer,EIGEN,153,"Restaking,ETH"
-2634,XDC Network,XDC,154,"L1,RWA"
+30494,Eigenlayer,EIGEN,153,"Staking,ETH"
+2634,XDC Network,XDC,154,"Business,RWA"
 9816,APENFT,NFT,155,NFT
-23711,Echelon Prime,PRIME,156,GameFi
-32778,Department Of Government Efficiency,DOGE,157,"Doge,Musk,Politics"
-29256,Ondo US Dollar Yield,USDY,158,
+23711,Echelon Prime,PRIME,156,"GameFi,AI"
+32778,Department Of Government Efficiency,DOGE,157,"Doge,Musk,Politics,Meme"
 2083,Bitcoin Gold,BTG,159,BTC
 7501,WOO,WOO,160,"DeFi,DEX"
-30063,Gigachad,GIGA,161,"Meme,Solana"
-12885,Astar,ASTR,162,"L1,Sonic"
-4846,Kava,KAVA,163,L1
-5964,Trust Wallet,TWT,164,"DeFi,BSC"
-5692,Compound,COMP,165,"DeFi,Curve"
+30063,Gigachad,GIGA,161,"Meme,SOL"
+12885,Astar,ASTR,162,"L1,Sonic,Japan"
+4846,Kava,KAVA,163,COSMOS
+5964,Trust Wallet,TWT,164,"BSC,Wallet"
+5692,Compound,COMP,165,"DeFi,Lending,ONE"
 18069,GMT,GMT,166,"Sports,GameFi"
 29599,USDB,USDB,167,
-3822,Theta Fuel,TFUEL,168,"L1,AI"
-30933,DOG•GO•TO•THE•MOON,DOG,169,"Rune,BTC,Meme"
-26997,LayerZero,ZRO,170,"L2,ZK"
+3822,Theta Fuel,TFUEL,168,"DePIN,AI,THETA"
+30933,DOG•GO•TO•THE•MOON,DOG,169,"Runes,BTC,Meme"
+26997,LayerZero,ZRO,170,Bridge
 10407,Baby Doge Coin,BABYDOGE,171,"Dog,Meme,ETH"
 28301,Memecoin,MEME,172,Meme
-3640,Livepeer,LPT,173,DePIN
-29420,Virtuals Protocol,VIRTUAL,174,"AI,Meme"
-2777,IoTeX,IOTX,175,"DePIN,L1,Modular"
-21296,EthereumPoW,ETHW,176,PoW
-28541,Jito,JTO,177,"Solana,Staking,Restaking"
+3640,Livepeer,LPT,173,"DePIN,AI,ONE"
+29420,Virtuals Protocol,VIRTUAL,174,"AI,Meme,Base"
+2777,IoTeX,IOTX,175,"DePIN,Modular"
+21296,EthereumPoW,ETHW,176,"PoW,ETH"
+28541,Jito,JTO,177,"SOL,Staking"
 8104,1inch,1INCH,178,"Aggregator,ETH,DEX"
-21259,ZetaChain,ZETA,179,"L1,Bridge"
-3964,Reserve Rights,RSR,180,Stablecoin
-5567,Celo,CELO,181,"L2,Payment"
-6538,Curve DAO,CRV,182,Stablecoin
-2682,Holo,HOT,183,Infra
-28932,Dymension,DYM,184,"L1,Modular"
-27960,Non-Playable Coin,NPC,185,"Meme,NFT,ETH"
-6945,Amp,AMP,186,Payment
+21259,ZetaChain,ZETA,179,ZETA
+3964,Reserve Rights,RSR,180,"Stablecoin,RWA"
+5567,Celo,CELO,181,"ETH,CELO,Payment"
+6538,Curve DAO,CRV,182,"DEX,DeFi"
+2682,Holo,HOT,183,DePIN
+28932,Dymension,DYM,184,"COSMOS,Modular,Rollup"
+27960,Non-Playable Coin,NPC,185,"Meme,ETH"
+6945,Amp,AMP,186,"Payment,SEC"
 1455,Golem,GLM,187,"AI,DePIN,Computing"
-31278,Drift Protocol,DRIFT,188,"Forecast,Solana,Perpetual,"
-29814,Ether.fi,ETHFI,189,"Restaking,ETH"
+31278,Drift Protocol,DRIFT,188,"Prediction,SOL,Perpetual,"
+29814,Ether.fi,ETHFI,189,"Staking,ETH"
 8119,SafePal,SFP,190,Wallet
-12220,Osmosis,OSMO,191,"Cosmos,DEX"
-5049,Verus,VRSC,192,"ZK,L1"
+12220,Osmosis,OSMO,191,"COSMOS,DEX"
+5049,Verus,VRSC,192,ZK
 32698,Dogs,DOGS,193,"Dog,Meme,TON"
-2469,Zilliqa,ZIL,194,L1
+2469,Zilliqa,ZIL,194,ZIL
 30008,Apu Apustaja,APU,195,"ETH,Meme,Pepe"
 16612,Nosana,NOS,196,"Solana,Computing,DePIN"
-32193,ALEO,ALEO,197,"Computing,DePIN"
-7548,WEMIX,WEMIX,198,L1
-5488,JUST,JST,199,"Lending,Tron,Sun"
+32193,ALEO,ALEO,197,"Computing,DePIN,Privacy,ZK"
+7548,WEMIX,WEMIX,198,GameFi
+5488,JUST,JST,199,"Lending,TRX,JustinSun"
 30096,Degen,DEGEN,200,"Base,Meme"
 131,Dash,DASH,201,"Privacy,PoW"
 29676,Aevo,AEVO,202,"Perpetual,DEX"
 14806,ConstitutionDAO,PEOPLE,203,"Meme,DAO,ETH,Politics"
-1896,0x Protocol,ZRX,204,"L2,ZK"
+1896,0x Protocol,ZRX,204,"ZK,ZRX"
 3783,Ankr Network,ANKR,205,"Infra,Computing"
-13631,Manta Network,MANTA,206,"L2,ZK"
-29884,Destra Network,DSYNC,207,"AI,DePIN,Computing"
-2467,OriginTrail,TRAC,208,AI
-5034,Kusama,KSM,209,L1
-21870,Metaplex,MPLX,210,Solona
+13631,Manta Network,MANTA,206,"ZK,DOT"
+2467,OriginTrail,TRAC,208,"AI,RWA"
+5034,Kusama,KSM,209,DOT
+21870,Metaplex,MPLX,210,"GameFi,NFT"
 1042,Siacoin,SC,211,"Storage,DePIN"
-33093,Moo Deng (SOL),MOODENG,212,"Meme,Solana"
+33093,Moo Deng (SOL),MOODENG,212,"Meme,SOL"
 8536,Mask Network,MASK,213,SocialFi
-9640,Metis,METIS,214,"L2,ZK"
+9640,Metis,METIS,214,"Rollup,ZK"
 2577,Ravencoin,RVN,215,PoW
-20362,Polymesh,POLYX,216,"RWA,L1"
+20362,Polymesh,POLYX,216,RWA
 2130,Enjin Coin,ENJ,217,GameFi
 8534,CHEX Token,CHEX,218,RWA
 1697,Basic Attention,BAT,219,"DeFi,Lending"
 1785,Gas,GAS,220,NEO
 33320,PUPS•WORLD•PEACE,PUPS,221,Meme
-2299,aelf,ELF,222,"AI,L1"
+2299,aelf,ELF,222,AI
 29835,io.net,IO,223,"Computing,DePIN"
 4041,MX,MX,224,CEX
-1684,Qtum,QTUM,225,L1
+1684,Qtum,QTUM,225,QTUM
 32195,Hamster Kombat,HMSTR,226,"TON,Meme"
 2941,CoinEx,CET,227,CEX
 11857,GMX,GMX,228,"DEX,Perpetual"
-29150,PONKE,PONKE,229,"Solona,Meme,Pepe"
+29150,PONKE,PONKE,229,"SOL,Meme,Pepe"
 20314,Terra,LUNA,230,"Terra,DoKwon"
-29073,AltLayer,ALT,231,"Restaking,Modular,L2"
-28293,Ultima,ULTIMA,232,Payment
+29073,AltLayer,ALT,231,"Staking,Modular,Rollup"
 27533,Osaka Protocol,OSAK,233,DeFi
 30083,Aethir,ATH,234,"DePIN,Computing"
-17751,Threshold Network,T,235,L1
+17751,Threshold Network,T,235,T
 8719,Illuvium,ILV,236,GameFi
 24007,Delysium,AGI,237,"AI,GameFi"
-9417,Maple,MPL,238,RWA
-25114,Cetus Protocol,CETUS,239,"Move,APT,Sui,DEX"
-1.73E+12,Galxe,GAL,240,L1
+9417,Maple,MPL,238,"RWA,Lending"
+25114,Cetus Protocol,CETUS,239,"Move,APT,SUI,DEX"
+1.73E+12,Galxe,GAL,240,"SocialFi,NFT,DID"
 33108,X Empire,X,241,GameFi
-30943,michi,MICHI,242,"Solana,Meme,Cat"
-9543,Biconomy,BICO,243,Modular
-15271,Rollbit Coin,RLB,244,Sports
+30943,michi,MICHI,242,"SOL,Meme,Cat"
+9543,Biconomy,BICO,243,Abstraction
+15271,Rollbit Coin,RLB,244,"Sports,GambleFi"
 20734,Moonwell,WELL,245,"Lending,Base,DeFi"
 32724,Simon's Cat,Cat,246,"Meme,Cat,BSC"
 2943,Rocket Pool,RPL,247,"ETH,Staking"
-22850,Hivemapper,HONEY,248,"DePIN,Solana"
-1168,Decred,DCR,249,PoW
-29169,Qubic,QUBIC,250,"L1,AI"
-14519,VVS Finance,VVS,251,DeFi
-3029,Flux,FLUX,252,PoW
-32120,Gravity,G,253,L1
-33258,sudeng,HIPPO,254,"Sui,Meme"
+22850,Hivemapper,HONEY,248,"DePIN,Traffic"
+1168,Decred,DCR,249,Privacy
+29169,Qubic,QUBIC,250,"AI,PoW"
+14519,VVS Finance,VVS,251,"DeFi,DEX"
+3029,Flux,FLUX,252,"AI,DePIN"
+32120,Gravity,G,253,DID
+33258,sudeng,HIPPO,254,"SUI,Meme"
 5864,yearn.finance,YFI,255,Aggregator
-5015,eHEX,EHEX,256,
-10529,Sun Token,SUN,257,"Sun,DEX"
-30285,MUMU THE BULL,MUMU,258,"Solana,Meme,Bull"
-4279,Solar,SXP,259,L1
+10529,Sun Token,SUN,257,"JustinSun,DEX"
+30285,MUMU THE BULL,MUMU,258,"SOL,Meme,Bull"
+4279,Solar,SXP,259,"Business,ONE"
 5617,UMA,UMA,260,DeFi
 32376,Avail,AVAIL,261,"Modular,DA"
 25220,HarryPotterObamaSonic10Inu,BITCOIN,262,Meme
 23635,BinaryX,BNX,263,GameFi
 5691,SKALE,SKL,264,Modular
 28066,Banana Gun,BANANA,265,"TON,Meme,Bot"
-16093,Bitkub Coin,KUB,266,L1
-30372,Saga,SAGA,267,L1
-28480,Blast,BLAST,268,"BTC,L2"
-9258,Chia,XCH,269,L1
+30372,Saga,SAGA,267,"SAGA,Modular"
+28480,Blast,BLAST,268,"BTC,Staking"
+9258,Chia,XCH,269,XCH
 32754,RabBitcoin,RBTC,270,BTC
 10688,Yield Guild Games,YGG,271,GameFi
 5198,Creditcoin,CTC,272,DeFi
 2499,SwissBorg,BORG,273,DAO
 33597,Fartcoin,FARTCOIN,274,"Solana,AI,Meme"
 2394,Telcoin,TEL,275,DeFi
-30986,Kamino,KMNO,276,"Solana,Lending"
-28230,Big Time,BIGTIME,277,Meme
+30986,Kamino,KMNO,276,"SOL,Lending"
+28230,Big Time,BIGTIME,277,GameFi
 29879,ANDY ETH,ANDY,278,"Pepe,ETH"
-4944,Tellor Tributes,TRB,279,Zhuang
+4944,Tellor Tributes,TRB,279,"Zhuang,Business,Oracle"
 7737,API3,API3,280,Oracle
-3992,COTI,COTI,281,L2
-2566,Ontology,ONT,282,L1
-33694,Luce,LUCE,283,"Meme,Solana"
-33391,DeepBook,DEEP,284,"Sui,DEX"
+3992,COTI,COTI,281,"ADA,SEC"
+2566,Ontology,ONT,282,ONT
+33694,Luce,LUCE,283,"Meme,SOL"
+33391,DeepBook,DEEP,284,"SUI,MOVE,DEX"
 21846,SPACE ID,ID,285,DID
-5647,Kadena,KDA,286,"PoW,L1"
+5647,Kadena,KDA,286,PoW
 6953,Frax Share,FXS,287,Stablecoin
-4679,Band Protocol,BAND,288,Oracle
-1934,Loopring,LRC,289,"DeFi,ZK,L2,DEX"
-11165,Orca,ORCA,290,"Solana,DEX"
-32717,Sundog,SUNDOG,291,"Meme,Dog,Sun"
-9260,Zignaly,ZIG,292,"AI,BN"
-31921,RETARDIO,RETARDIO,293,Meme
-11568,Adventure Gold,AGLD,294,rRRWA
-11948,Radix,XRD,295,L1
+4679,Band Protocol,BAND,288,"Oracle,Business"
+1934,Loopring,LRC,289,"DeFi,ZK,DEX"
+11165,Orca,ORCA,290,"SOL,DEX,DeFi"
+32717,Sundog,SUNDOG,291,"Meme,Dog,JustinSun"
+9260,Zignaly,ZIG,292,"AI,BNB,COSMOS"
+31921,RETARDIO,RETARDIO,293,"NFT,SOL,Meme,Murad"
+11568,Adventure Gold,AGLD,294,"RWA,Gold"
+11948,Radix,XRD,295,XRD
 12573,Clearpool,CPOOL,296,"RWA,Lending,Base"
-3945,Harmony,ONE,297,L1
-32856,Mr. Mint,MNT,298,L2
-7455,Audius,AUDIO,299,"Solona,Music"
+3945,Harmony,ONE,297,ONE
+32856,Mr. Mint,MNT,298,MNT
+7455,Audius,AUDIO,299,"SOL,Music,NFT"
 10180,Gomining Token,GOMINING,300,"BTC,PoW"
-6836,Moonbeam,GLMR,301,L2
+6836,Moonbeam,GLMR,301,DOT
 9903,Convex Finance,CVX,302,"ETH,Staking"
 28933,Xai,XAI,303,GameFi
-30712,Merlin Chain,MERL,304,"BTC,L2"
-873,NEM,XEM,305,L1
+30712,Merlin Chain,MERL,304,"BTC,Staking"
+873,NEM,XEM,305,XEM
 19091,H2O Dao,H2O,306,DAO
 6748,Centrifuge,CFG,307,"DeFi,RWA"
-32925,Spectral,SPEC,308,"AI,Trade"
+32925,Spectral,SPEC,308,AI
 3911,Ocean Protocol,OCEAN,309,AI
-1214,Lisk,LSK,310,L2
+1214,Lisk,LSK,310,LSK
 30584,BasedAI,BASEDAI,311,"ZK,AI"
-3978,Chromia,CHR,312,"Modular,L1"
-2099,ICON,ICX,313,Bridge
-3012,VeThor,VTHO,314,L1
-5446,JUST Stablecoin,USDJ,315,
+3978,Chromia,CHR,312,Modular
+2099,ICON,ICX,313,CrossChain
+3012,VeThor,VTHO,314,VET
 6758,Sushi,SUSHI,316,"DEX,ETH"
-22620,Across Protocol,ACX,317,Bridge
+22620,Across Protocol,ACX,317,CrossChain
 4056,Ampleforth,AMPL,318,Payment
-22059,Venom,VENOM,319,L1
+22059,Venom,VENOM,319,VENOM
 29335,Pixels,PIXEL,320,"GameFi,Ronin"
 23355,0x0.ai: AI Smart Contract,0X0,321,"AI,ZK,Privacy"
-2545,Arcblock,ABT,322,Infra
+2545,Arcblock,ABT,322,
 22125,Mythos,MYTH,323,GameFi
-1698,Horizen,ZEN,324,"ZK,L1"
+1698,Horizen,ZEN,324,ZK
 13967,Goldfinch,GFI,325,"Stablecoin,Lending"
 12999,SSV Network,SSV,326,"ETH,Staking,DAO"
 11396,JOE,JOE,327,DEX
 2989,STASIS EURO,EURS,328,
 24613,Open Campus,EDU,329,"Education,CZ"
 2930,IQ,IQ,330,AI
-8037,Vanar Chain,VANRY,331,"AI,GameFi,L1"
-2300,WAX,WAXP,332,"Bridge,DePIN,GameFi"
-30746,BounceBit,BB,333,"BTC,L2"
+8037,Vanar Chain,VANRY,331,"AI,GameFi"
+2300,WAX,WAXP,332,"CrossChain,DePIN,GameFi"
+30746,BounceBit,BB,333,"BTC,Staking"
 28458,Autonolas,OLAS,334,AI
 5728,Balancer,BAL,335,"DeFi,DEX"
-1274,Waves,WAVES,336,Infra
-3217,Ontology Gas,ONG,337,"Privacy,Infra"
+1274,Waves,WAVES,336,
+3217,Ontology Gas,ONG,337,Privacy
 33372,CARV,CARV,338,"Modular,DA,GameFi,AI"
 30963,Zentry,ZENT,339,GameFi
 2132,Powerledger,POWR,340,"Energy,DePIN"
 13769,World Mobile Token,WMTX,341,Payment
-8267,OKT Chain,OKT,342,CEX
+8267,OKT Chain,OKT,342,"CEX,OKX"
 1637,iExec RLC,RLC,343,"DePIN,Computing"
-7129,TerraClassicUSD,USTC,344,"SBF,Terra"
+7129,TerraClassicUSD,USTC,344,"SBF,Terra,Dokwon"
 7288,Venus,XVS,345,"Stablecoin,Lending,BSC"
 1759,Status,SNT,346,Wallet
 15584,Humans.ai,HEART,347,AI
-26998,Scroll,SCR,348,"BTC,L2"
-12147,Synapse,SYN,349,Bridge
-31526,Moca Coin,MOCA,350,"Bridge,Sports,NFT,Music"
+26998,Scroll,SCR,348,BTC
+12147,Synapse,SYN,349,CrossChain
+31526,Moca Coin,MOCA,350,"CrossChain,Sports,NFT,Music"
 8083,Tokenlon,LON,351,Payment
 3835,Orbs,ORBS,352,DeFi
-31525,Taiko,TAIKO,353,"L2,ZK"
+31525,Taiko,TAIKO,353,ZK
 2982,MVL,MVL,354,"DePIN,TADA,Energy,Traffic"
 5370,Hive,HIVE,355,DePIN
 9436,Dogelon Mars,ELON,356,"Musk,Doge,Meme"
 109,DigiByte,DGB,357,PoW
 1567,Nano,XNO,358,"PoW,Payment"
-26680,Neutron,NTRN,359,"Infra,Cosmos"
+26680,Neutron,NTRN,359,COSMOS
 11865,Bone ShibaSwap,BONE,360,"Shiba,DEX"
-29920,Slerf,SLERF,361,"Solona,Meme"
-5444,Cartesi,CTSI,362,"L2,Modular"
-2405,IOST,IOST,363,L1
-25264,Snek,SNEK,364,"Cardano,Meme"
+29920,Slerf,SLERF,361,"SOL,Meme"
+5444,Cartesi,CTSI,362,Modular
+2405,IOST,IOST,363,IOST
+25264,Snek,SNEK,364,"ADA,Meme"
 3801,BORA,BORA,365,GameFi
-31668,BILLION•DOLLAR•CAT,BDC,366,"Rune,BTC,Meme"
-4660,Telos,TLOS,367,"ZK,Infra"
-1586,ARK,ARK,368,"L1,Modular"
+31668,BILLION•DOLLAR•CAT,BDC,366,"Runes,BTC,Meme"
+4660,Telos,TLOS,367,ZK
+1586,ARK,ARK,368,Modular
 1732,Numeraire,NMR,369,AI
 10903,Coin98,C98,370,DeFi
 7429,Liquity,LQTY,371,"Stablecoin,Lending,ETH"
-3330,Pax Dollar,USDP,372,
 9040,Pundi X,PUNDIX,373,Payment
-7978,Solana Name Service,FIDA,374,"Solona,DNS"
+7978,Solana Name Service,FIDA,374,"SOL,DID"
 7533,Oraichain,ORAI,375,AI
-19269,CoW Protocol,COW,376,"DeFi,DEX,intents"
-14878,Alephium,ALPH,377,L1
+19269,CoW Protocol,COW,376,"DeFi,DEX,Intents,GNO"
+14878,Alephium,ALPH,377,Wallet
 26220,Islamic Coin,ISLM,378,Muslim
 25023,Milady Meme Coin,LADYS,379,"Meme,ETH"
-28382,Myro,MYRO,380,"Solona,Meme,Dog"
-32299,Cloud,CLOUD,381,"Solona,Staking"
+28382,Myro,MYRO,380,"SOL,Meme,Dog"
+32299,Cloud,CLOUD,381,"SOL,Staking"
 4691,Zano,ZANO,382,Privacy
 6958,Alchemy Pay,ACH,383,Payment
 32826,Satoshi Airline,JET,384,"GameFi,Traffic"
 7725,TrueFi,TRU,385,"DeFi,Lending,ETH"
-2933,BitMart,BMX,386,CEX
+2933,BitMart,BMX,386,"CEX,BitMart"
 1816,Civic,CVC,387,"DID,Privacy"
 25714,Crown by Third Time Games,CROWN,388,GameFi
 28452,Rats,RATS,389,"BRC20,BTC"
 3884,Function X,FX,390,DeFi
 11289,Spell,SPELL,391,"DeFi,Stablecoin,Lending,ETH"
-28076,Ozone Chain,OZO,392,"L1,Quantum"
-20641,EURC,EURC,393,
-2868,Constellation,DAG,394,L1
+28076,Ozone Chain,OZO,392,ZK
 27178,PAAL AI,PAAL,395,AI
 9674,Wilder World,WILD,396,DID
 14783,Magic,MAGIC,397,GameFi
 28675,Coq Inu,COQ,398,"Meme,AVAX"
-1.73E+12,Worldwide USD,WUSD,399,
 8972,Seedify.fund,SFUND,400,"GameFi,Metaverse,NFT"
 27750,Toshi,TOSHI,401,"Base,Meme,Cat"
-8766,My Neighbor Alice,ALICE,402,GameFi
-3701,RSK Infrastructure Framework,RIF,403,"DeFi,Infra"
+8766,My Neighbor Alice,ALICE,402,"GameFi,Metaverse,NFT"
+3701,RSK Infrastructure Framework,RIF,403,DeFi
 32257,UXLINK,UXLINK,404,SocialFi
-5899,Casper Network,CSPR,405,L1
-7127,Velo,VELO,406,Payment
-9285,Moonriver,MOVR,407,L2
+5899,Casper Network,CSPR,405,CSPR
+7127,Velo,VELO,406,"Payment,XLM"
+9285,Moonriver,MOVR,407,MOVR
 29447,NetMind Token,NMT,408,"AI,Computing"
 30902,Landwolf (ETH),WOLF,409,"Meme,Pepe,ETH"
 23756,ChainGPT,CGPT,410,AI
 24203,SmarDex,SDEX,411,"DeFi,DEX,Stablecoin"
 11232,Highstreet,HIGH,412,GameFi
-4120,Prom,PROM,413,"Modular,L2,ZK"
+4120,Prom,PROM,413,"Modular,ZK"
 28299,TokenFi,TOKEN,414,RWA
-24781,CYBER,CYBER,415,"L2,SocialFi"
-32498,Sigma,SIGMA,416,"Solona,Meme"
+24781,CYBER,CYBER,415,"SocialFi,NFT,DID"
+32498,Sigma,SIGMA,416,"SOL,Meme"
 32892,Bellscoin,BELLS,417,PoW
 5908,dKargo,DKA,418,"DePIN,Traffic"
 11976,Aleph Zero,AZERO,419,"L1,ZK,Privacy"
 32037,ANyONe Protocol,ANYONE,420,"DePIN,Privacy"
 1886,Dent,DENT,421,"DePIN,Mobile"
-4807,Shentu,CTK,422,"L1,Alibaba"
+4807,Shentu,CTK,422,Alibaba
 30347,BUBCat,BUB,423,"Meme,Base"
-12186,Songbird,SGB,424,"L1,Bridge"
 11374,Mines of Dalarnia,DAR,425,GameFi
-1320,Ardor,ARDR,426,Infra
-30168,Stratis,STRAX,427,Infra
 8602,Bounce,AUCTION,428,"DeFi,Auction"
-1230,Steem,STEEM,429,"L1,SociaFi"
+1230,Steem,STEEM,429,SociaFi
 6138,DIA,DIA,430,Oracle
 11620,IX Swap,IXS,431,"RWA,DeFi,DEX"
 13969,Phoenix,PHB,432,AI
@@ -435,44 +418,42 @@ id,name,symbol,rank,Tags
 1762,Ergo,ERG,434,DeFi
 -5001,Incentive,INC,435,DeFi
 1.73E+12,Puff The Dragon,PUFF,436,"ETH,Meme,Dragon"
-5266,MiL.k Alliance,MLK,437,L1
-7497,Marlin,POND,438,"Infra,Computing"
-30315,Omni Network,OMNI,439,"L1,Restaking"
+7497,Marlin,POND,438,"DePIN,Computing"
+30315,Omni Network,OMNI,439,CrossChain
 29513,NodeAI,GPU,440,"AI,Computing"
-4092,Dusk,DUSK,441,"L1,ZK,Privacy"
+4092,Dusk,DUSK,441,"ZK,Privacy,RWA"
 4006,STP,STPT,442,"GameFi,AI"
 28674,Fusionist,ACE,443,"SocialFi,GameFi"
 11294,SuperRare,RARE,444,"ETH,NFT"
-2303,Medibloc,MED,445,Healthcare
-29175,Wen,WEN,446,"Solona,Meme,Cat"
+2303,Medibloc,MED,445,Health
+29175,Wen,WEN,446,"SOL,Meme,Cat"
 7224,DODO,DODO,447,DeFi
 24600,Helium Mobile,MOBILE,448,"DePIN,Mobile"
 32461,Neiro on ETH,NEIRO,449,"Meme,Dog,ETH"
 6841,PHALA,PHA,450,AI
 9444,Kyber Network Crystal,KNC,451,"DeFi,DEX,Aggregator"
 5275,Paycoin,PCI,452,"Payment,Korea"
-33439,Lumia,LUMIA,453,"L1,RWA"
+33439,Lumia,LUMIA,453,RWA
 541,Syscoin,SYS,454,PoW
 11346,Radio Caca,RACA,455,NFT
-33614,Memes AI,MEMESAI,456,"Solona,AI,Meme"
+33614,Memes AI,MEMESAI,456,"SOL,AI,Meme"
 25269,BOBO Coin,BOBO,457,"ETH,Meme,Bear"
 17591,Nym,NYM,458,Privacy
 4950,LCX,LCX,459,CEX
 8677,Symbol,XYM,460,ZK
 30915,Verum Coin,VERUM,461,"Payment,Wallet"
 23951,Staika,STIK,462,GameFi
-19843,ApeX,APEX,463,"DEX,Trade"
+19843,ApeX,APEX,463,"DEX,Perpetual"
 30528,NEURALAI,NEURAL,464,"AI,Computing,TAO,3D"
 2765,XYO Network,XYO,465,DePIN
 32966,Catizen,CatI,466,"TON,GameFi,SocialFi"
 22764,Hooked Protocol,HOOK,467,Education
 23037,Hifi Finance,HIFI,468,"DeFi,Lending,ETH"
-11584,Braintrust,BTRST,469,Hire
 20435,Velodrome Finance,VELO,470,DEX
 30859,Hoppy,HOPPY,471,"Meme,ETH,Pepe"
 2071,Request,REQ,472,Payment
 11823,Pocket Network,POKT,473,Data
-4206,WINkLink,WIN,474,"Tron,Oracle"
+4206,WINkLink,WIN,474,"TRX,Oracle"
 8420,DAO Maker,DAO,475,DAO
 17917,RSS3,RSS3,476,"Data,SocialFi"
 3814,Celer Network,CELR,477,Bridge
@@ -482,123 +463,115 @@ id,name,symbol,rank,Tags
 2588,Loom Network,LOOM,481,Infra
 19075,ECOMI,OMI,482,NFT
 30683,WUFFI,WUF,483,Meme
-14803,Aurora,AURORA,484,"Near,Infra"
-22074,ALEX Lab,ALEX,485,"BTC,Stacks,DeFi"
+14803,Aurora,AURORA,484,NEAR
+22074,ALEX Lab,ALEX,485,"BTC,STX,DeFi"
 29779,Polyhedra Network,ZKJ,486,"ZK,AI"
 12749,Nakamoto Games,NAKA,487,GameFi
 18037,Maverick Protocol,MAV,488,DeFi
-7064,BakerySwap,BAKE,489,"DEX,BSC"
+7064,BakerySwap,BAKE,489,"DEX,BNB,DeFi"
 1974,Propy,PRO,490,"RWA,RealEstate"
-693,Verge,XVG,491,"Privacy,L1"
-33543,Luna by Virtuals,LUNA,492,"Meme,AI,Base,Virtuals,Youtube,Tiktok"
-14556,Boba Network,BOBA,493,L2
+693,Verge,XVG,491,Privacy
+33543,Luna by Virtuals,LUNA,492,"Meme,AI,Base,VIRTUAL,Youtube,Tiktok"
+14556,Boba Network,BOBA,493,Rollup
 28778,NFPrompt,NFP,494,"AI,UGC"
 9288,BENQI,QI,495,"AVAX,Staking"
 27872,MAGA,TRUMP,496,"Trump,Politics"
 14280,Euler,EUL,497,"Modular,Lending,ETH"
-32615,Smoking Chicken Fish,SCF,498,"Solona,Meme"
+32615,Smoking Chicken Fish,SCF,498,"SOL,Meme"
 1727,Bancor Network,BNT,499,DeFi
 22265,Oasys,OAS,500,"L1,GameFi"
 24477,ArbDoge AI,AIDOGE,501,"AI,Meme,Dog,Arb"
 6756,Acala,ACA,502,DeFi
 28688,AI Analysis Token,AIAT,503,"AI,Trade"
-9566,Liquity USD,LUSD,504,
-30912,MANEKI,MANEKI,505,"Solona,Meme,Cat"
-2273,Uquid Coin,UQC,506,
-21533,Lista DAO,LISTA,507,"ETH,Meme,PumpFun"
-1788,Metal DAO,MTL,508,"L2,OPSuperchain"
+30912,MANEKI,MANEKI,505,"SOL,Meme,Cat"
+21533,Lista DAO,LISTA,507,"BNB,Staking"
+1788,Metal DAO,MTL,508,OP
 21964,Tectum,TET,509,Payment
-3306,Gemini Dollar,GUSD,510,
-1772,Storj,STORJ,511,Storage
-21106,Radiant Capital,RDNT,512,Bridge
-18934,Stargate Finance,STG,513,Bridge
+1772,Storj,STORJ,511,"Storage,DePIN"
+21106,Radiant Capital,RDNT,512,Lending
+18934,Stargate Finance,STG,513,DeFi
 5380,Hunt,HUNT,514,UGC
-30661,Parcl,PRCL,515,"Solona,RWA,RealEstate,NFT"
+30661,Parcl,PRCL,515,"SOL,RWA,RealEstate,NFT"
 22461,Hashflow,HFT,516,DEX
 9308,Vulcan Forged,PYR,517,"GameFi,NFT"
 7817,Bifrost,BFC,518,"L1,Bridge"
 5117,Origin Token,OGN,519,"DeFi,Staking"
 7232,Stella,ALPHA,520,Lending
-30391,Zeus Network,ZEUS,521,"Solona,Bridge"
+30391,Zeus Network,ZEUS,521,"SOL,CrossChain"
 30369,HashAI,HASHAI,522,"AI,PoW"
 30636,Zebec Network,ZBCN,523,"Payment,RWA"
-6843,Radworks,RAD,524,Infra
-9175,Mobox,MBOX,525,GameFi
-20605,TARS AI,TAI,526,"AI,Modular,Solona"
+6843,Radworks,RAD,524,DePIN
+9175,Mobox,MBOX,525,"GameFi,Metaverse,NFT"
+20605,TARS AI,TAI,526,"AI,Modular,SOL"
 20873,LeverFi,LEVER,527,"DeFi,Lending"
 11078,Iagon,IAG,528,"AI,Storage,Computing,DePIN"
 2297,StormX,STMX,529,Payment
 7878,MobileCoin,MOB,530,Payment
-2840,QuarkChain,QKC,531,L1
+2840,QuarkChain,QKC,531,QKC
 13663,Gains Network,GNS,532,"DeFi,Lending,Trade"
-30843,Renzo,REZ,533,"Restaking,ETH"
-31750,Gems VIP,GEMS,534,Funding
+30843,Renzo,REZ,533,"Staking,ETH"
+31750,Gems VIP,GEMS,534,Launchpad
 7859,Badger,BADGER,535,"BTC,Lending"
-21351,Sweat Economy,SWEAT,536,Sports
+21351,Sweat Economy,SWEAT,536,"Sports,GameFi"
 5604,Secret,SCRT,537,Privacy
-9263,Unizen,ZCX,538,"DEX,Aggregator"
-30449,Tensor,TNSR,539,"Solona,NFT"
-1.73E+12,RSIC•GENESIS•RUNE,RSIC,540,"Rune,BTC,Meme"
+9263,Unizen,ZCX,538,"DEX,Aggregator,POL"
+30449,Tensor,TNSR,539,"SOL,NFT"
+1.73E+12,RSIC•GENESIS•RUNE,RSIC,540,"Runes,BTC,Meme"
 18895,Marblex,MBX,541,"GameFi,Metaverse,NFT"
-29296,NAVI Protocol,NAVX,542,"Sui,DeFi,Lending,Modular,Oracle"
-31510,Mother Iggy,MOTHER,543,"Solona,Meme"
-22765,ArchLoot,AL,544,"GameFi,NFT,BSC"
-6951,Reef,REEF,545,"L1,DeFi, NFT,GameFi"
-25354,A3S,AA,546,Bridge
-22359,XPLA,XPLA,547,"L1,GameFi,Metaverse,NFT"
+29296,NAVI Protocol,NAVX,542,"SUI,DeFi,Lending"
+31510,Mother Iggy,MOTHER,543,"SOL,Meme"
+6951,Reef,REEF,545,ONE
+25354,A3S,AA,546,Abstraction
+22359,XPLA,XPLA,547,"COSMOS,GameFi,Metaverse,NFT"
 28846,Sleepless AI,AI,548,"AI,GameFi"
-21781,Stride,STRD,549,"Cosmos,Staking"
-29709,Entangle,NGL,550,Bridge
-32526,Covalent X Token,CXT,551,
-23195,Access Protocol,ACS,552,
-29734,Zero1 Labs,DEAI,553,
-2780,NKN,NKN,554,
-29557,AxonDAO Governance Token,AXGT,555,
-24645,OmniFlix Network,FLIX,556,
-10631,Gods Unchained,GODS,557,
-3600,Hippocrat,HPO,558,
-31830,Daddy Tate,DADDY,559,
-12041,Dimitra,DMTR,560,
-32832,Tron Bull,BULL,561,
-5268,Energy Web,EWT,562,
-2638,Cortex,CTXC,563,
-5161,WazirX,WRX,564,
-28567,PaLM AI,PALM,565,
-31246,GameBuild,GAME,566,
-32968,AI Companions,AIC,567,
-8107,Cobak,CBK,568,
-32415,Skibidi Toilet,SKBDI,569,
-8615,Ethernity Chain,ERN,570,
-29273,Matr1x Fire,FIRE,571,
-9119,Alien Worlds,TLM,572,
-27622,LUKSO,LYX,573,
-4038,MovieBloc,MBL,574,
-13803,Marinade,MNDE,575,
-29555,Portal,PORTAL,576,
-31632,PeiPei,PEIPEI,577,
-19819,REI Network,REI,578,
-1.73E+12,Swell Network,SWELL,579,
-8422,Pangolin,PNG,580,
-3714,LTO Network,LTO,581,
-31914,Billy,BILLY,582,
-13268,Chainflip,FLIP,583,
-14822,Victoria VR,VR,584,
+21781,Stride,STRD,549,"COSMOS,Staking"
+29709,Entangle,NGL,550,"Oracle,CrossChain"
+32526,Covalent X Token,CXT,551,"Modular,AI"
+23195,Access Protocol,ACS,552,"NFT,UGC"
+2780,NKN,NKN,554,DePIN
+29557,AxonDAO Governance Token,AXGT,555,DeSci
+24645,OmniFlix Network,FLIX,556,COSMOS
+10631,Gods Unchained,GODS,557,"GameFi,Metaverse,NFT"
+3600,Hippocrat,HPO,558,"Health,DeSci"
+31830,Daddy Tate,DADDY,559,"SOL,Meme"
+12041,Dimitra,DMTR,560,DePIN
+32832,Tron Bull,BULL,561,"TRX,Meme"
+5268,Energy Web,EWT,562,"Energy,DOT,GNO"
+2638,Cortex,CTXC,563,AI
+5161,WazirX,WRX,564,"CEX,India"
+28567,PaLM AI,PALM,565,AI
+31246,GameBuild,GAME,566,GameFi
+32968,AI Companions,AIC,567,AI
+8107,Cobak,CBK,568,POL
+32415,Skibidi Toilet,SKBDI,569,"SOL,Meme"
+8615,Ethernity Chain,ERN,570,"NFT,Metaverse,OP"
+29273,Matr1x Fire,FIRE,571,POL
+9119,Alien Worlds,TLM,572,"GameFi,NFT"
+27622,LUKSO,LYX,573,DID
+13803,Marinade,MNDE,575,"SOL,Staking"
+29555,Portal,PORTAL,576,GameFi
+31632,PeiPei,PEIPEI,577,"Pepe,Meme,ETH"
+1.73E+12,Swell Network,SWELL,579,"ETH,Staking"
+8422,Pangolin,PNG,580,"DEX,AVAX"
+3714,LTO Network,LTO,581,"NFT,RWA"
+31914,Billy,BILLY,582,"SOL,Meme"
+13268,Chainflip,FLIP,583,DeFi
+14822,Victoria VR,VR,584,Metaverse
 3637,Aergo,AERGO,585,
-19618,A Hunters Dream,CAW,586,
-7046,Aavegotchi,GHST,587,
+7046,Aavegotchi,GHST,587,"GameFi,Metaverse,NFT"
 4039,ARPA,ARPA,588,
-15185,Kujira,KUJI,589,
-2505,Bluzelle,BLZ,590,
-5007,TROY,TROY,591,
-33081,XBorg,XBG,592,
-6950,Perpetual Protocol,PERP,593,
-10188,Automata,ATA,594,
-27650,Ice Open Network,ICE,595,
+15185,Kujira,KUJI,589,DeFi
+2505,Bluzelle,BLZ,590,"Storage,GameFi"
+5007,TROY,TROY,591,Business
+33081,XBorg,XBG,592,"GameFi,SOL"
+6950,Perpetual Protocol,PERP,593,"DEX,BNB,DeFi"
+10188,Automata,ATA,594,"AI,SEC"
+27650,Ice Open Network,ICE,595,"Business,DeFi,Oracle,BNB"
 5616,MATH,MATH,596,
-33441,Dolan Duck,DOLAN,597,
-20622,Forta,FORT,598,
-11212,Star Atlas,ATLAS,599,
-31227,Mini,MINI,600,
+33441,Dolan Duck,DOLAN,597,"SOL,Meme"
+20622,Forta,FORT,598,AI
+11212,Star Atlas,ATLAS,599,"GameFi,Metaverse"
+31227,Mini,MINI,600,"SOL,Meme,Cat"
 1.73E+12,Major Frog,MAJOR,601,
 4166,Realio Network Token,RIO,602,
 9720,PlatON Network,LAT,603,

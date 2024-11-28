@@ -2,7 +2,7 @@ import json
 import queue
 import asyncio
 from decimal import Decimal, InvalidOperation, ConversionSyntax
-from typing import Dict, Set
+from typing import Dict, Optional
 import telegram
 from binance.um_futures import UMFutures
 from binance.websocket.um_futures.websocket_client import UMFuturesWebsocketClient
@@ -10,60 +10,200 @@ from config import ConfigLoader
 from utils import PerformanceTimer, setup_logger
 from services import MessageFormatter
 import time
-from threading import Thread
+from threading import Thread, Lock
 
 class BinanceUSDTFuturesTraderManager:
+    MAX_RECONNECT_ATTEMPTS = 10
+    HEARTBEAT_TIMEOUT = 200
+    LISTEN_KEY_REFRESH_INTERVAL = 1800  # 30分钟
+    PING_INTERVAL = 20
+
     def __init__(self, api_key, api_secret, bot_token, chat_id):
         self.rest_client = UMFutures(key=api_key, secret=api_secret)
         self.ws_client = None
-        self.active_positions = {}  # 当前活跃持仓
-        self.monitored_symbols = set()  # 监控的交易对
-        self.message_queue = queue.Queue()  # 消息队列
+        self.active_positions = {}
+        self.monitored_symbols = set()
+        self.message_queue = queue.Queue()
         self.performance_timer = PerformanceTimer()
         self.TELEGRAM_BOT_TOKEN = bot_token
         self.TELEGRAM_CHAT_ID = chat_id
-
-        self.logger = setup_logger('binance trader')
-
-        # 初始化时获取所有交易对信息并存储
+        
+        # 初始化锁
+        self.ws_lock = Lock()
+        self.position_lock = Lock()
+        
+        # WebSocket状态
+        self.is_ws_connected = False
+        self.ws_reconnect_count = 0
+        self.listen_key = None
+        
+        # 初始化日志
+        self.logger = setup_logger('binance_trader')
+        
+        # 初始化交易对信息
         self.symbols_info = {}
         self._init_symbols_info()
+        
+        # 启动WebSocket
         self._start_ws_monitor()
-        self.ws_monitor_thread = Thread(target=self._monitor_ws_connection, daemon=True)
-        self.ws_monitor_thread.start()
+        
+        # 启动监控线程
+        # self.ws_monitor_thread = Thread(target=self._monitor_ws_connection, daemon=True)
+        # self.ws_monitor_thread.start()
+        
+        # 启动listen key维护线程
+        self.listen_key_thread = Thread(target=self._keep_listen_key_alive, daemon=True)
+        self.listen_key_thread.start()
+        
         self.last_heartbeat = time.time()
-        self.heartbeat_interval = 30  # 30秒
-    
-    def has_position(self, symbol: str):
-        self.logger.info(f"enter has_position({symbol})")
-        self.logger.info(self.active_positions)
-        position = self.active_positions.get(symbol)
-        self.logger.info(f"position: {position}")
-        return position and float(position.get('amount', 0)) != 0
 
-    def has_trade_pair(self, symbol: str):
-        return symbol in self.symbols_info
-        
-    def new_order(self, leverage: int, symbol: str, usdt_amount: float, 
-                                tp_percent: float = None, sl_percent: float = None, long: bool = True):
-        self.set_leverage(symbol=symbol, leverage=leverage)
 
-        try: 
-            # 执行开仓
-            response = self.limit_open_long_with_tp_sl(
-                symbol=symbol,
-                usdt_amount=usdt_amount,
-                tp_percent=tp_percent,
-                sl_percent=sl_percent
-            )
-            
-            if response:
-                self.logger.info(f"做多开仓成功: {response}")
-        
+    def _get_listen_key(self) -> Optional[str]:
+        """获取新的listen key"""
+        try:
+            response = self.rest_client.new_listen_key()
+            return response['listenKey']
         except Exception as e:
-            self.logger.error(f"Binance 做多开仓失败 {symbol if 'symbol' in locals() else 'unknown'}: {e}")
-            raise e
+            self.logger.error(f"获取listen key失败: {e}")
+            return None
+
+    def _keep_listen_key_alive(self):
+       while True:
+            try:
+                self.rest_client.new_listen_key()  # 续期listen key
+                self.logger.info("续期listen key")
+                time.sleep(1800)  # 每30分钟续期一次
+            except Exception as e:
+                self.logger.error(f"续期listen key失败: {e}")
+                self.is_ws_connected = False
+                time.sleep(60)  # 失败后等待1分钟再试
+
+    def _start_ws_monitor(self):
+        """启动WebSocket监控"""
+        with self.ws_lock:
+            try:
+                if self.ws_client:
+                    self.ws_client.stop()
+                
+                # 获取新的listen key
+                self.listen_key = self._get_listen_key()
+                if not self.listen_key:
+                    raise Exception("Failed to get listen key")
+                
+                self.ws_client = UMFuturesWebsocketClient(
+                    on_message=self.handle_ws_message,
+                    is_combined=True
+                )
+                
+                # 订阅用户数据流
+                self.ws_client.user_data(listen_key=self.listen_key)
+                
+                self.is_ws_connected = True
+                self.ws_reconnect_count = 0
+                self.last_heartbeat = time.time()
+                
+                self.logger.info("WebSocket连接成功建立")
+                
+                # 更新持仓信息和订阅
+                with self.position_lock:
+                    self.active_positions = self.get_active_positions()
+                self.update_price_subscriptions()
+                
+            except Exception as e:
+                self.logger.error(f"启动WebSocket失败: {e}")
+                self.is_ws_connected = False
+                raise
+
+    def _reconnect_websocket(self):
+        """重新连接WebSocket"""
+        try:
+            self._start_ws_monitor()
+            return True
+        except Exception as e:
+            self.logger.error(f"重连失败: {e}")
+            return False
+
+    def _handle_ws_disconnection(self):
+        """处理WebSocket断开连接"""
+        if self.ws_reconnect_count >= self.MAX_RECONNECT_ATTEMPTS:
+            self.logger.error("达到最大重连次数，停止重连")
+            return False
+            
+        delay = min(2 ** self.ws_reconnect_count, 300)
+        self.logger.info(f"等待 {delay} 秒后尝试重连...")
+        time.sleep(delay)
         
+        self.ws_reconnect_count += 1
+        self.logger.info(f"尝试第 {self.ws_reconnect_count} 次重连")
+        
+        return self._reconnect_websocket()
+
+    def _monitor_ws_connection(self):
+        """监控WebSocket连接状态"""
+        disconnect_time = None
+        
+        while True:
+            try:
+                current_time = time.time()
+                
+                if (current_time - self.last_heartbeat > self.HEARTBEAT_TIMEOUT or 
+                    not self.is_ws_connected):
+                    
+                    if disconnect_time is None:
+                        disconnect_time = current_time
+                        self.logger.warning("检测到WebSocket断开")
+                        self.notify_disconnect()
+                    
+                    if self._handle_ws_disconnection():
+                        self.logger.info("重连成功")
+                        self.notify_reconnect()
+                        disconnect_time = None
+                else:
+                    if disconnect_time is not None:
+                        self.logger.info("连接恢复正常")
+                        disconnect_time = None
+                        
+                time.sleep(10)
+                
+            except Exception as e:
+                self.logger.error(f"监控线程错误: {e}")
+                time.sleep(10)
+
+    def handle_ws_message(self, _, message):
+            """处理WebSocket消息"""
+            try:
+                self.last_heartbeat = time.time()
+                self.is_ws_connected = True
+                
+                if isinstance(message, str):
+                    message = json.loads(message)
+                
+                # 忽略心跳和订阅确认消息
+                if message.get('result') is None:
+                    return
+                    
+                self.logger.debug(f"Received message: {message}")
+                
+                # 确保消息包含必要的字段
+                if 'data' not in message:
+                    return
+                    
+                data = message['data']
+                
+                # 处理不同类型的消息
+                if isinstance(data, dict) and 'e' in data:
+                    event_type = data['e']
+                    if event_type == 'ACCOUNT_UPDATE':
+                        self.handle_account_update(data)
+                    elif event_type == 'ORDER_TRADE_UPDATE':
+                        self.handle_order_update(data)
+                
+                elif 'stream' in message and 'markPrice' in message['stream']:
+                    self.handle_price_update(message)
+                    
+            except Exception as e:
+                self.logger.error(f"处理WebSocket消息失败: {str(e)}", exc_info=True)
+    
     def _init_symbols_info(self):
         """初始化所有交易对信息"""
         try:
@@ -76,92 +216,6 @@ class BinanceUSDTFuturesTraderManager:
         except Exception as e:
             self.logger.error(f"初始化交易对信息失败: {e}")
             raise
-
-    def check_heartbeat(self):
-        """检查心跳"""
-        if time.time() - self.last_heartbeat > self.heartbeat_interval:
-            self.logger.warning("心跳超时，可能断连")
-            self.is_ws_connected = False
-            return False
-        return True
-
-    def _start_ws_monitor(self):
-        """启动WebSocket监控"""
-        try:
-            if self.ws_client:
-                self.ws_client.stop()  # 确保旧的连接被关闭
-                
-            self.ws_client = UMFuturesWebsocketClient(
-                on_message=self.handle_ws_message,
-                is_combined=True
-            )
-            
-            # 获取并订阅listen key
-            listen_key = self.rest_client.new_listen_key()['listenKey']
-            self.ws_client.user_data(listen_key=listen_key)
-            
-            self.is_ws_connected = True
-            self.ws_reconnect_count = 0
-            self.logger.info("WebSocket连接成功建立")
-
-            # 初始化持仓和订阅
-            self.active_positions = self.get_active_positions()
-            # self.update_price_subscriptions()
-            
-        except Exception as e:
-            self.logger.error(f"WebSocket启动错误: {e}")
-            self.is_ws_connected = False
-            self._handle_ws_disconnection()
-            
-    def _handle_ws_disconnection(self):
-        """处理WebSocket断开连接"""
-        if self.ws_reconnect_count >= self.MAX_RECONNECT_ATTEMPTS:
-            self.logger.error("达到最大重连次数，停止重连")
-            return False
-            
-        delay = min(2 ** self.ws_reconnect_count, 300)  # 指数退避，最大延迟5分钟
-        self.logger.info(f"等待 {delay} 秒后尝试重连...")
-        time.sleep(delay)
-        
-        self.ws_reconnect_count += 1
-        self.logger.info(f"尝试第 {self.ws_reconnect_count} 次重连")
-        
-        try:
-            self._start_ws_monitor()
-            return True
-        except Exception as e:
-            self.logger.error(f"重连失败: {e}")
-            return False
-
-    def _monitor_ws_connection(self):
-        disconnect_time = None
-        
-        while True:
-            if not self.check_heartbeat() or not self.is_ws_connected:
-                if disconnect_time is None:
-                    disconnect_time = time.time()
-                    self.logger.warning("检测到WebSocket断开")
-                    self.notify_disconnect()  # 发送断连通知
-                
-                if self._handle_ws_disconnection():
-                    self.logger.info("重连成功")
-                    self.notify_reconnect()  # 发送重连成功通知
-                    disconnect_time = None
-                
-            else:
-                disconnect_time = None
-            
-            time.sleep(10)  # 每10秒检查一次
-
-    def notify_disconnect(self):
-            """发送断连通知"""
-            message = f"⚠️ WebSocket连接断开\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}"
-            self.message_queue.put(message)
-
-    def notify_reconnect(self):
-            """发送重连成功通知"""
-            message = f"✅ WebSocket重连成功\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}"
-            self.message_queue.put(message)
 
     def update_price_subscriptions(self):
         """更新价格订阅"""
@@ -183,36 +237,15 @@ class BinanceUSDTFuturesTraderManager:
         except Exception as e:
             self.logger.error(f"更新价格订阅失败: {e}")
 
-    def handle_ws_message(self, _, message):
-        """处理WebSocket消息"""
-        try:
-            self.last_heartbeat = time.time() 
-            self.is_ws_connected = True  # 收到消息说明连接正常
-            if isinstance(message, str):
-                message = json.loads(message)
-            
-            self.logger.debug(f"message: {message}")
-            # 处理账户更新消息
-            if 'e' in message['data'] and message['data']['e'] == 'ACCOUNT_UPDATE':
-                self.handle_account_update(message['data'])
-            
-            # 处理标记价格更新
-            elif 'stream' in message and 'markPrice' in message['stream']:
-                self.handle_price_update(message['data'])
-                
-        except Exception as e:
-            self.logger.error(f"处理WebSocket消息失败: {e}")
+    def notify_disconnect(self):
+            """发送断连通知"""
+            message = f"⚠️ WebSocket连接断开\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+            self.message_queue.put(message)
 
-    def _keep_listen_key_alive(self):
-        """保持listen key活跃"""
-        while True:
-            try:
-                self.rest_client.new_listen_key()  # 续期listen key
-                time.sleep(1800)  # 每30分钟续期一次
-            except Exception as e:
-                self.logger.error(f"续期listen key失败: {e}")
-                self.is_ws_connected = False
-                time.sleep(60)  # 失败后等待1分钟再试
+    def notify_reconnect(self):
+            """发送重连成功通知"""
+            message = f"✅ WebSocket重连成功\n时间: {time.strftime('%Y-%m-%d %H:%M:%S')}"
+            self.message_queue.put(message)
 
     def handle_account_update(self, message):
         """处理账户更新消息"""

@@ -1,5 +1,3 @@
-import logging
-import json
 import queue
 import asyncio
 from decimal import Decimal
@@ -11,6 +9,9 @@ from pybit.unified_trading import HTTP, WebSocket
 from datetime import datetime
 from services.message_formatter import MessageFormatter
 from utils import setup_logger
+from decimal import Decimal, InvalidOperation
+import logging
+
 
 
 class BybitUSDTFuturesTraderManager:
@@ -66,7 +67,6 @@ class BybitUSDTFuturesTraderManager:
         """初始化所有交易对信息"""
         try:
             exchange_info = self.rest_client.get_instruments_info(category='linear', limit=1000)
-            self.logger.info(exchange_info)
             # 将交易对信息转换为字典格式，便于快速查询
             self.symbols_info = {
                 s['symbol']: s for s in exchange_info['result']['list']
@@ -136,23 +136,54 @@ class BybitUSDTFuturesTraderManager:
             self.logger.error(f"更新价格订阅失败: {e}")
 
     def handle_price_update(self, message):
-        """处理价格更新,更新止损"""
+        """
+        处理价格更新,更新止损
+        
+        Args:
+            message: WebSocket消息数据
+        """
         try:
-            symbol = (message['topic'].split('.')[-1])
+            # 提取symbol
+            symbol = message['topic'].split('.')[-1]
             data = message['data']
-
-            current_price = Decimal(data['markPrice'])
             
-            if symbol in self.active_positions:
-                position = self.active_positions[symbol]
-                entry_price = Decimal(position['entry_price'])
-                current_stop_loss = Decimal(position['current_stop_loss'])
+            # 安全地转换价格
+            try:
+                # 确保价格是有效的数字字符串
+                mark_price = str(data['markPrice']).strip()
+                if not mark_price or mark_price.lower() == 'nan':
+                    self.logger.warning(f"收到无效的价格数据: {mark_price}")
+                    return
+                    
+                current_price = Decimal(mark_price)
+            except (InvalidOperation, ValueError, TypeError) as e:
+                self.logger.error(f"价格转换失败 - symbol: {symbol}, price: {data['markPrice']}, error: {e}")
+                return
                 
-                # 计算价格变化百分比
+            # 检查是否有活跃仓位
+            if symbol not in self.active_positions:
+                return
+                
+            position = self.active_positions[symbol]
+            
+            # 安全地转换entry_price和stop_loss
+            try:
+                entry_price = Decimal(str(position['entry_price']))
+                current_stop_loss = Decimal(str(position['current_stop_loss']))
+            except (InvalidOperation, ValueError, TypeError) as e:
+                self.logger.error(f"仓位数据转换失败 - symbol: {symbol}, position: {position}, error: {e}")
+                return
+                
+            # 计算价格变化百分比
+            try:
                 price_change_percent = ((current_price - entry_price) / entry_price) * Decimal('100')
+            except (InvalidOperation, DivisionByZero) as e:
+                self.logger.error(f"计算价格变化失败 - symbol: {symbol}, error: {e}")
+                return
                 
-                # 如果价格上涨超过10%，更新止损
-                if price_change_percent >= Decimal('10'):
+            # 如果价格上涨超过10%，更新止损
+            if price_change_percent >= Decimal('10'):
+                try:
                     new_stop_loss = self.calculate_new_stop_loss(price_change_percent, entry_price)
                     
                     if new_stop_loss > current_stop_loss:
@@ -162,15 +193,44 @@ class BybitUSDTFuturesTraderManager:
                         update_message = (
                             f"🔄 止损更新\n\n"
                             f"交易对: {symbol}\n"
-                            f"前高价格: {current_price}\n"
+                            f"前高价格: {current_price:.8f}\n"
                             f"涨幅: {price_change_percent:.2f}%\n"
-                            f"新止损价: {new_stop_loss}\n"
+                            f"新止损价: {new_stop_loss:.8f}\n"
                         )
                         self.message_queue.put(update_message)
                         
+                except Exception as e:
+                    self.logger.error(f"更新止损失败 - symbol: {symbol}, error: {e}")
+                    
         except Exception as e:
-            self.logger.error(f"处理价格更新失败: {e}")
+            self.logger.error(f"处理价格更新失败: {str(e)}", exc_info=True)
 
+    def calculate_new_stop_loss(self, price_change_percent: Decimal, entry_price: Decimal) -> Decimal:
+        """
+        计算新的止损价格
+        
+        Args:
+            price_change_percent: 价格变化百分比
+            entry_price: 入场价格
+            
+        Returns:
+            Decimal: 新的止损价格
+        """
+        try:
+            # 根据价格涨幅调整止损
+            if price_change_percent >= Decimal('20'):
+                stop_loss_percent = Decimal('0.85')  # 设置在当前价格的85%
+            elif price_change_percent >= Decimal('15'):
+                stop_loss_percent = Decimal('0.80')  # 设置在当前价格的80%
+            else:
+                stop_loss_percent = Decimal('0.75')  # 设置在当前价格的75%
+                
+            new_stop_loss = entry_price * (Decimal('1') + price_change_percent / Decimal('100')) * stop_loss_percent
+            return new_stop_loss.quantize(Decimal('0.00000001'))  # 保留8位小数
+            
+        except Exception as e:
+            self.logger.error(f"计算新止损价格失败: {e}")
+            raise
 
 
     def handle_position_update(self, message):
