@@ -68,15 +68,21 @@ class BinanceUSDTFuturesTraderManager:
             return None
 
     def _keep_listen_key_alive(self):
-       while True:
+        while True:
             try:
-                self.rest_client.new_listen_key()  # 续期listen key
-                self.logger.info("续期listen key")
-                time.sleep(1800)  # 每30分钟续期一次
+                # 使用延长listen key有效期的接口
+                self.rest_client.renew_listen_key(self.listen_key)
+                self.logger.info("续期listen key成功")
+                time.sleep(300)  # 建议改为5分钟检查一次
             except Exception as e:
+                if e.error_code == -1125:  # listen key不存在
+                    self.logger.warning("Listen key已失效，正在重新获取...")
+                    new_key = self._get_listen_key()
+                    if new_key:
+                        self.listen_key = new_key
+                        self._reconnect_websocket()
                 self.logger.error(f"续期listen key失败: {e}")
-                self.is_ws_connected = False
-                time.sleep(60)  # 失败后等待1分钟再试
+                time.sleep(60)
 
     def _start_ws_monitor(self):
         """启动WebSocket监控"""
@@ -232,7 +238,7 @@ class BinanceUSDTFuturesTraderManager:
 
             try: 
                 # 执行开仓
-                response = self.market_open_long_with_tp_sl(
+                response = self.limit_open_long_with_tp_sl(
                     symbol=symbol,
                     usdt_amount=usdt_amount,
                     tp_percent=tp_percent,
